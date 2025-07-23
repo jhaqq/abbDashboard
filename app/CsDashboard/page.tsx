@@ -103,11 +103,6 @@ const CsDashboard = () => {
       />
 
       <div className="pt-16 h-full flex flex-col md:flex-row relative overflow-hidden">
-        {/* Show current dashboard in the UI for testing */}
-        <div className="absolute top-16 left-4 z-10 bg-slate-800 px-2 py-1 rounded text-sm">
-          Current: {selectedDashboard}
-        </div>
-
         {/* Left Panel - Labels Printed - Wider panels */}
         <div className="w-full md:w-[420px] lg:w-[480px] xl:w-[520px] md:absolute md:top-0 md:bottom-0 md:left-0 md:pt-16 h-full overflow-hidden">
           <div className="h-full max-h-full overflow-hidden">
