@@ -52,7 +52,16 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             type="date"
             value={selectedDate}
             onChange={(e) => onDateChange?.(e.target.value)}
-            className="bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white text-sm"
+            onClick={(e) => {
+              const target = e.target as HTMLInputElement;
+              if (target.showPicker) {
+                target.showPicker();
+              }
+            }}
+            className="bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white text-sm hover:bg-slate-500 transition-colors"
+            style={{
+              colorScheme: "dark",
+            }}
           />
         </div>
 
@@ -67,7 +76,10 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       {/* Day Selection */}
       <div className="flex justify-center space-x-4 sm:space-x-6">
         {["Saturday", "Sunday"].map((day) => (
-          <label key={day} className="flex items-center space-x-2 text-sm sm:text-base">
+          <label
+            key={day}
+            className="flex items-center space-x-2 text-sm sm:text-base"
+          >
             <input
               type="checkbox"
               checked={selectedDays.includes(day)}
@@ -82,4 +94,4 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   );
 };
 
-export default DateSelector
+export default DateSelector;
