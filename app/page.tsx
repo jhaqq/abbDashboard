@@ -44,7 +44,7 @@ export default function LoginPage() {
 
           <div>
             <p className='text-lg mb-1'>PASSWORD</p>
-            <input className='bg-white rounded-sm h-7 text-black text-sm pl-2 w-full mb-2' />
+            <input className='bg-white rounded-sm h-7 text-black text-sm p-2 w-full mb-2' type='password'/>
           </div>
         </div>
 
