@@ -97,7 +97,7 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
       {showCloseButton && onClose && (
         <button 
           onClick={onClose}
-          className="w-full py-2 px-4 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors"
+          className="w-full py-2 px-4 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors cursor-pointer"
         >
           Close
         </button>

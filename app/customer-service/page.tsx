@@ -1,21 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "../Components/Header";
-import Panel from "../Components/Panel";
 import LabelsPanel from "../Components/LabelsPanel";
 import DateSelector from "../Components/DateSelector";
 import OrderSearch from "../Components/OrderSearch";
 import OrderDetails from "../Components/OrderDetails";
 
 const CsDashboard = () => {
+  const router = useRouter();
+  
   const [selectedDashboard, setSelectedDashboard] =
     useState("Customer Service");
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
-  const [selectedDays, setSelectedDays] = useState<string[]>([]); // Changed to empty array for unchecked default
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
   // Mock data - replace with real data later
@@ -37,22 +39,21 @@ const CsDashboard = () => {
   const handleDashboardChange = (dashboard: string) => {
     setSelectedDashboard(dashboard);
     
-    // You can add different logic here for each dashboard type
+    // Navigate to the corresponding page
     switch(dashboard) {
       case "Customer Service":
-        // Customer Service dashboard logic
-        break;
-      case "Warehouse":
-        // Warehouse dashboard logic
+        // Already on CS dashboard, no need to navigate
         break;
       case "Printer":
-        // Printer dashboard logic
+        // For now, show alert since printer page doesn't exist yet
+        alert("Printer dashboard coming soon!");
         break;
       case "Manager":
-        // Manager dashboard logic
+        router.push('/manager');
         break;
       default:
         // Unknown dashboard
+        console.log("Unknown dashboard:", dashboard);
     }
   };
 
@@ -78,16 +79,71 @@ const CsDashboard = () => {
 
   const handleOrderFound = (orderData: any) => {
     console.log("Order found:", orderData);
-    setSelectedOrder(orderData.id);
+    
+    // Get all shipped orders from LabelsPanel mock data (same as Manager page)
+    const mockShippedOrders = [
+      "Order #113-2565431-7744232",
+      "Order #112-4102767-8543429",
+      "Order #115-7128507-6526632",
+      "Order #118-9876543-1234567",
+      "Order #113-8292160-4582667",
+      "Order #216205-1",
+      "Order #216206",
+      "Order #216207-2",
+      "Order #112-9300928-7129830",
+      "Order #111-1520400-0921820",
+      "Order #119-8348262-9536234",
+      "Order #113-3273216-9601051",
+      "Order #120-0366922-6617039",
+      "Order #121-5870221-9199429",
+      "Order #122-8742621-6071408",
+      "Order #123-3080067-7901827",
+      "Order #124-3902312-6833829",
+      "Order #125-9876543-2109876",
+      "Order #126-1234567-8901234",
+      "Order #127-5555555-5555555",
+      "Order #128-1111111-1111111",
+      "Order #129-2222222-2222222",
+      "Order #130-3333333-3333333",
+      "Order #131-4444444-4444444",
+      "Order #132-6666666-6666666",
+      "Order #133-7777777-77777777",
+      "Order #134-8888888-8888888",
+      "Order #135-9999998-9999999",
+      "Order #136-0000000-0000000"
+    ];
+    
+    // Combine all orders (shipped and unshipped)
+    const allOrders = [...mockShippedOrders, ...unshippedOrders];
+    
+    // Check if the searched order exists in our order lists
+    const searchTerm = orderData.id.trim();
+    
+    const orderExists = allOrders.some(order => {
+      // Clean up both the order and search term for comparison
+      // Remove "Order", "#", and whitespace in various combinations
+      const cleanOrder = order.replace(/^(Order\s*)?#?\s*/i, '').trim();
+      const cleanSearch = searchTerm.replace(/^(Order\s*)?#?\s*/i, '').trim();
+      
+      // Exact match of the cleaned order number
+      return cleanOrder.toLowerCase() === cleanSearch.toLowerCase();
+    });
+    
+    if (orderExists) {
+      setSelectedOrder(orderData.id); // Set the selected order to show details
+    } else {
+      // Set a special state to show "order not found"
+      setSelectedOrder("ORDER_NOT_FOUND");
+    }
   };
 
   const handleCloseOrderDetails = () => {
     setSelectedOrder(null);
   };
 
+  // Updated dropdown options - removed "Warehouse"
   const dropdownOptions = [
     "Customer Service",
-    "Warehouse",
     "Printer",
     "Manager",
   ];
@@ -99,28 +155,34 @@ const CsDashboard = () => {
         showDropdown={true}
         dropdownOptions={dropdownOptions}
         onDropdownChange={handleDashboardChange}
-        selectedOption={selectedDashboard} // Pass the selected option
+        selectedOption={selectedDashboard}
       />
 
-      <div className="pt-16 h-full flex flex-col md:flex-row relative overflow-hidden">
-        {/* Left Panel - Labels Printed - Wider panels */}
-        <div className="w-full md:w-[420px] lg:w-[480px] xl:w-[520px] md:absolute md:top-0 md:bottom-0 md:left-0 md:pt-16 h-full overflow-hidden">
-          <div className="h-full max-h-full overflow-hidden">
-            <Panel title="Labels Printed" width="full" borderSide="right">
-              <LabelsPanel
-                shippedOrders={[]}
-                unshippedOrders={unshippedOrders}
-                onOrderClick={handleOrderClick}
-                selectedOrder={selectedOrder}
-              />
-            </Panel>
+      {/* Main Content - 3 Panel Grid Layout matching Manager style */}
+      <div 
+        className="pt-16 w-full grid grid-cols-1 md:grid-cols-3 gap-2 px-2 pb-2" 
+        style={{ height: '100vh' }}
+      >
+        
+        {/* LEFT PANEL - Labels Printed */}
+        <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
+          <div className="p-3 border-b border-slate-700 flex-shrink-0">
+            <h2 className="text-lg font-semibold">Labels Printed</h2>
+          </div>
+          <div className="flex-1 p-3 overflow-hidden min-h-0">
+            <LabelsPanel
+              shippedOrders={[]}
+              unshippedOrders={unshippedOrders}
+              onOrderClick={handleOrderClick}
+              selectedOrder={selectedOrder}
+            />
           </div>
         </div>
 
-        {/* Center Area - Date Selector + Middle Panel - Smaller center area */}
-        <div className="flex-1 md:mx-[420px] lg:mx-[480px] xl:mx-[520px] flex flex-col h-full overflow-hidden">
-          {/* Date Selector - Outside and above the middle panel */}
-          <div className="px-4 py-6 flex justify-center flex-shrink-0">
+        {/* CENTER PANEL - Date Selector + Order Search and Details */}
+        <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
+          {/* Date Selector - Fixed at top inside panel */}
+          <div className="p-3 border-b border-slate-700 flex-shrink-0">
             <DateSelector
               selectedDate={selectedDate}
               onDateChange={handleDateChange}
@@ -128,62 +190,81 @@ const CsDashboard = () => {
               onDayToggle={handleDayToggle}
             />
           </div>
+          
+          {/* Order Search and Details */}
+          <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
+            {/* Order Search - Fixed at top */}
+            <div className="mb-4 flex-shrink-0">
+              <OrderSearch
+                onSearch={handleOrderSearch}
+                onOrderFound={handleOrderFound}
+              />
+            </div>
 
-          {/* Middle Panel - Order Search and Details */}
-          <div className="flex-1 overflow-hidden">
-            <Panel width="full">
-              <div className="flex flex-col h-full">
-                {/* Order Search at the top */}
-                <div className="mb-6 flex-shrink-0">
-                  <OrderSearch
-                    onSearch={handleOrderSearch}
-                    onOrderFound={handleOrderFound}
-                  />
+            {/* Order Details - Scrollable content */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {selectedOrder === "ORDER_NOT_FOUND" ? (
+                // Show "Order Not Found" message
+                <div className="text-center text-red-400 p-4">
+                  <div className="mb-4">
+                    <svg className="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833-.207 2.5 1.732 2.5z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold mb-2">Order Not Found</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      The order number you searched for does not exist in our shipped or unshipped orders.
+                    </p>
+                    <button 
+                      onClick={() => setSelectedOrder(null)}
+                      className="px-4 py-2 bg-red-600/20 border border-red-500/30 rounded text-red-300 text-sm hover:bg-red-600/30 transition-colors cursor-pointer"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
                 </div>
-
-                {/* Order Details - takes remaining space */}
-                <div className="flex-1 overflow-hidden">
-                  <OrderDetails
-                    orderNumber={selectedOrder || undefined}
-                    orderData={
-                      selectedOrder
-                        ? {
-                            id: "39060312948",
-                            orderNumber: selectedOrder,
-                            location: "ABB - 8",
-                            shipped: true,
-                            carrier: "FEDEX",
-                            store: "Shopify",
-                            primeStatus: false,
-                            priority: 1,
-                            timestamp: "7/2/2025, 10:40:54 AM",
-                            items: [
-                              {
-                                name: "3/16 12 Double - (2 rolls)",
-                                sku: "316-12inch-17SQ2",
-                                upc: "850015891045"
-                              }
-                            ]
-                          }
-                        : undefined
-                    }
-                    onClose={handleCloseOrderDetails}
-                    showCloseButton={!!selectedOrder}
-                  />
-                </div>
-              </div>
-            </Panel>
+              ) : (
+                <OrderDetails
+                  orderNumber={selectedOrder || undefined}
+                  orderData={
+                    selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
+                      ? {
+                          id: "39060312948",
+                          // Clean the order number to prevent duplicate "Order #" prefix
+                          orderNumber: selectedOrder.replace(/^(Order\s*)?#?\s*/i, '').trim(),
+                          location: "ABB - 8",
+                          shipped: true,
+                          carrier: "FEDEX",
+                          store: "Shopify",
+                          primeStatus: false,
+                          priority: 1,
+                          timestamp: "7/2/2025, 10:40:54 AM",
+                          items: [
+                            {
+                              name: "3/16 12 Double - (2 rolls)",
+                              sku: "316-12inch-17SQ2",
+                              upc: "850015891045"
+                            }
+                          ]
+                        }
+                      : undefined
+                  }
+                  onClose={handleCloseOrderDetails}
+                  showCloseButton={!!selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"}
+                />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Right Panel - Left Behind - Wider panels */}
-        <div className="w-full md:w-[420px] lg:w-[480px] xl:w-[520px] md:absolute md:top-0 md:bottom-0 md:right-0 md:pt-16 h-full overflow-hidden">
-          <div className="h-full max-h-full overflow-hidden">
-            <Panel title="Left Behind (#)" width="full" borderSide="left">
-              <div className="text-green-400">
-                Order # 123-123456789-54321 - ABB1
-              </div>
-            </Panel>
+        {/* RIGHT PANEL - Left Behind */}
+        <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
+          <div className="p-3 border-b border-slate-700 flex-shrink-0">
+            <h2 className="text-lg font-semibold">Left Behind (#)</h2>
+          </div>
+          <div className="flex-1 p-3 overflow-y-auto min-h-0">
+            <div className="text-green-400">
+              Order # 123-123456789-54321 - ABB1
+            </div>
           </div>
         </div>
       </div>
