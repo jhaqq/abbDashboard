@@ -3,19 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../Components/Header";
-import Panel from "../Components/Panel";
 import LabelsPanel from "../Components/LabelsPanel";
 import DateSelector from "../Components/DateSelector";
 import PickupAvailability from "../Components/PickupAvailability";
-import PerformanceMetrics from "../Components/PerformanceMetrics";
 import OrderSearch from "../Components/OrderSearch";
 import OrderDetails from "../Components/OrderDetails";
 
-const Manager = () => {
+const Printer = () => {
   const router = useRouter();
 
-  // State management - same as CS Dashboard
-  const [selectedDashboard, setSelectedDashboard] = useState("Manager");
+  // State management
+  const [selectedDashboard, setSelectedDashboard] = useState("Printer");
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
@@ -23,7 +21,7 @@ const Manager = () => {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
 
-  // Event handlers - updated to handle navigation
+  // Event handlers - navigation
   const handleDashboardChange = (dashboard: string) => {
     setSelectedDashboard(dashboard);
 
@@ -33,18 +31,10 @@ const Manager = () => {
         router.push("/customer-service");
         break;
       case "Printer":
-        router.push("/printer");
+        // Already on printer page, no need to navigate
         break;
       case "Manager":
-        // Already on manager page, no need to navigate
-        break;
-      case "ABB1":
-        // For now, show alert since ABB1 page doesn't exist yet
-        alert("ABB1 dashboard coming soon!");
-        break;
-      case "ABB....":
-        // For now, show alert since ABB.... page doesn't exist yet
-        alert("ABB.... dashboard coming soon!");
+        router.push("/manager");
         break;
       default:
         // Unknown dashboard
@@ -71,7 +61,6 @@ const Manager = () => {
   // This handles typing in the search box
   const handleOrderSearch = (searchTerm: string) => {
     console.log("Searching for:", searchTerm);
-    // This gets called as user types
   };
 
   // This handles when Enter is pressed in search box
@@ -135,6 +124,7 @@ const Manager = () => {
     }
   };
 
+  // This handles closing order details
   const handleCloseOrderDetails = () => {
     setSelectedOrder(null);
   };
@@ -149,14 +139,8 @@ const Manager = () => {
     "Order #134-2222222-2222222",
   ];
 
-  // Extended dropdown options for Manager page
-  const dropdownOptions = [
-    "Customer Service",
-    "Printer",
-    "Manager",
-    "ABB1",
-    "ABB....",
-  ];
+  // Dropdown options for Printer page
+  const dropdownOptions = ["Customer Service", "Printer", "Manager"];
 
   return (
     <div className="w-full h-screen text-white overflow-hidden">
@@ -169,7 +153,7 @@ const Manager = () => {
         selectedOption={selectedDashboard}
       />
 
-      {/* Main Content - EXACT SAME structure as CS Dashboard */}
+      {/* Main Content */}
       <div className="pt-16 w-full h-full flex flex-col gap-2 px-2 pb-2">
         {/* TOP ROW - 3 Panels in a row */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 min-h-0">
@@ -214,10 +198,12 @@ const Manager = () => {
             <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
               {/* Order Search - Fixed at top */}
               <div className="mb-4 flex-shrink-0">
-                <OrderSearch
-                  onSearch={handleOrderSearch}
-                  onOrderFound={handleOrderFound}
-                />
+                <div className="mb-4 flex-shrink-0">
+                  <OrderSearch
+                    onSearch={handleOrderSearch}
+                    onOrderFound={handleOrderFound}
+                  />
+                </div>
               </div>
 
               {/* Order Details - Conditional scrolling */}
@@ -295,13 +281,13 @@ const Manager = () => {
           </div>
         </div>
 
-        {/* BOTTOM ROW - Performance Metrics Panel */}
+        {/* BOTTOM ROW - Inventory Panel */}
         <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
           <div className="p-3 border-b border-slate-700 flex-shrink-0">
-            <h2 className="text-lg font-semibold">Performance Metrics</h2>
+            <h2 className="text-lg font-semibold">Inventory as of #DATE#</h2>
           </div>
           <div className="flex-1 p-3 overflow-y-auto scrollbar-visible min-h-0">
-            <PerformanceMetrics />
+            <h1>Content Here</h1>
           </div>
         </div>
       </div>
@@ -341,4 +327,4 @@ const Manager = () => {
   );
 };
 
-export default Manager;
+export default Printer;

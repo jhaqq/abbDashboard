@@ -55,53 +55,88 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       {/* Order Number Header */}
-      <div className="text-green-400 font-medium">
+      <div className="text-green-400 font-medium flex-shrink-0">
         Order # {order.orderNumber}
       </div>
       
-      {/* Order Details Section */}
-      <div>
-        <h3 className="text-lg font-semibold mb-3">Order Details</h3>
-        
-        <div className="space-y-2 text-sm">
-          <div><strong>ID:</strong> {order.id}</div>
-          <div><strong>Order Number:</strong> {order.orderNumber}</div>
-          <div><strong>Location:</strong> {order.location}</div>
-          <div><strong>Shipped:</strong> {order.shipped ? 'Yes' : 'No'}</div>
-          <div><strong>Carrier:</strong> {order.carrier}</div>
-          <div><strong>Store:</strong> {order.store}</div>
-          <div><strong>Prime Status:</strong> {order.primeStatus ? 'Yes' : 'No'}</div>
-          <div><strong>Priority:</strong> {order.priority}</div>
-          <div><strong>Timestamp:</strong> {order.timestamp}</div>
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto scrollbar-visible min-h-0">
+        {/* Order Details Section */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold mb-3">Order Details</h3>
+          
+          <div className="space-y-2 text-sm">
+            <div><strong>ID:</strong> {order.id}</div>
+            <div><strong>Order Number:</strong> {order.orderNumber}</div>
+            <div><strong>Location:</strong> {order.location}</div>
+            <div><strong>Shipped:</strong> {order.shipped ? 'Yes' : 'No'}</div>
+            <div><strong>Carrier:</strong> {order.carrier}</div>
+            <div><strong>Store:</strong> {order.store}</div>
+            <div><strong>Prime Status:</strong> {order.primeStatus ? 'Yes' : 'No'}</div>
+            <div><strong>Priority:</strong> {order.priority}</div>
+            <div><strong>Timestamp:</strong> {order.timestamp}</div>
+          </div>
         </div>
+        
+        {/* Items Section */}
+        {order.items && order.items.length > 0 && (
+          <div className="mb-4">
+            <h4 className="font-medium mb-2">Items:</h4>
+            <ul className="space-y-1 text-sm">
+              {order.items.map((item, index) => (
+                <li key={index} className="ml-4">
+                  • <strong>Name:</strong> {item.name}. <strong>SKU:</strong> {item.sku}. 
+                  <strong>UPC:</strong> {item.upc}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       
-      {/* Items Section */}
-      {order.items && order.items.length > 0 && (
-        <div>
-          <h4 className="font-medium mb-2">Items:</h4>
-          <ul className="space-y-1 text-sm">
-            {order.items.map((item, index) => (
-              <li key={index} className="ml-4">
-                • <strong>Name:</strong> {item.name}. <strong>SKU:</strong> {item.sku}. 
-                <strong>UPC:</strong> {item.upc}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {/* Close Button */}
+      {/* Close Button - Fixed at bottom */}
       {showCloseButton && onClose && (
         <button 
           onClick={onClose}
-          className="w-full py-2 px-4 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors cursor-pointer"
+          className="w-full py-2 px-4 bg-slate-600 hover:bg-slate-500 rounded text-white transition-colors cursor-pointer flex-shrink-0"
         >
           Close
         </button>
       )}
+
+      <style jsx>{`
+        /* Custom scrollbar styles - matching LabelsPanel */
+        .scrollbar-visible {
+          scrollbar-width: thin;
+          scrollbar-color: #6B7280 #374151;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-track {
+          background: #374151;
+          border-radius: 4px;
+          border: 1px solid #4B5563;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb {
+          background: #6B7280;
+          border-radius: 4px;
+          border: 1px solid #4B5563;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+          background: #9CA3AF;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb:active {
+          background: #D1D5DB;
+        }
+      `}</style>
     </div>
   )
 }

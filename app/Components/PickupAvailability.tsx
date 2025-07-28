@@ -29,18 +29,19 @@ const PickupAvailability: React.FC<PickupAvailabilityProps> = ({
   };
 
   return (
-    <div className={`${className}`}>
-      <h3 className="text-xl font-semibold mb-4 text-center">Pickup Availability</h3>
+    <div className={`h-full flex flex-col ${className}`}>
+      {/* Title - Fixed at top */}
+      <h3 className="text-xl font-semibold mb-4 text-center flex-shrink-0">Pickup Availability</h3>
       
-      {/* The grid container */}
-      <div className="overflow-x-auto">
+      {/* Table container with scrolling */}
+      <div className="flex-1 overflow-y-auto scrollbar-visible min-h-0">
         <table className="w-full border-collapse">
-          {/* Table header with carrier names */}
-          <thead>
+          {/* Table header with carrier names - sticky header */}
+          <thead className="sticky top-0 bg-gray-800">
             <tr>
-              <th className="text-left p-2 border-b border-slate-700"></th>
+              <th className="text-left p-2 border-b border-slate-700 bg-gray-800"></th>
               {carriers.map((carrier) => (
-                <th key={carrier} className="text-center p-2 border-b border-slate-700 text-white font-medium">
+                <th key={carrier} className="text-center p-2 border-b border-slate-700 text-white font-medium bg-gray-800">
                   {carrier}
                 </th>
               ))}
@@ -73,6 +74,38 @@ const PickupAvailability: React.FC<PickupAvailabilityProps> = ({
           </tbody>
         </table>
       </div>
+
+      <style jsx>{`
+        /* Custom scrollbar styles - matching LabelsPanel */
+        .scrollbar-visible {
+          scrollbar-width: thin;
+          scrollbar-color: #6B7280 #374151;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-track {
+          background: #374151;
+          border-radius: 4px;
+          border: 1px solid #4B5563;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb {
+          background: #6B7280;
+          border-radius: 4px;
+          border: 1px solid #4B5563;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+          background: #9CA3AF;
+        }
+        
+        .scrollbar-visible::-webkit-scrollbar-thumb:active {
+          background: #D1D5DB;
+        }
+      `}</style>
     </div>
   );
 };

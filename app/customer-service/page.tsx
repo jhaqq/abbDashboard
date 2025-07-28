@@ -10,12 +10,12 @@ import OrderDetails from "../Components/OrderDetails";
 
 const CsDashboard = () => {
   const router = useRouter();
-  
+
   const [selectedDashboard, setSelectedDashboard] =
     useState("Customer Service");
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
-    return today.toISOString().split('T')[0];
+    return today.toISOString().split("T")[0];
   });
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
@@ -33,23 +33,23 @@ const CsDashboard = () => {
     "Order #137-5555555-5555555",
     "Order #138-6666666-6666666",
     "Order #139-7777777-7777777",
-    "Order #140-8888888-8888888"
+    "Order #140-8888888-8888888",
   ];
 
   const handleDashboardChange = (dashboard: string) => {
     setSelectedDashboard(dashboard);
-    
+
     // Navigate to the corresponding page
-    switch(dashboard) {
+    switch (dashboard) {
       case "Customer Service":
         // Already on CS dashboard, no need to navigate
         break;
       case "Printer":
         // For now, show alert since printer page doesn't exist yet
-        alert("Printer dashboard coming soon!");
+        router.push("/printer");
         break;
       case "Manager":
-        router.push('/manager');
+        router.push("/manager");
         break;
       default:
         // Unknown dashboard
@@ -79,7 +79,7 @@ const CsDashboard = () => {
 
   const handleOrderFound = (orderData: any) => {
     console.log("Order found:", orderData);
-    
+
     // Get all shipped orders from LabelsPanel mock data (same as Manager page)
     const mockShippedOrders = [
       "Order #113-2565431-7744232",
@@ -110,25 +110,25 @@ const CsDashboard = () => {
       "Order #133-7777777-77777777",
       "Order #134-8888888-8888888",
       "Order #135-9999998-9999999",
-      "Order #136-0000000-0000000"
+      "Order #136-0000000-0000000",
     ];
-    
+
     // Combine all orders (shipped and unshipped)
     const allOrders = [...mockShippedOrders, ...unshippedOrders];
-    
+
     // Check if the searched order exists in our order lists
     const searchTerm = orderData.id.trim();
-    
-    const orderExists = allOrders.some(order => {
+
+    const orderExists = allOrders.some((order) => {
       // Clean up both the order and search term for comparison
       // Remove "Order", "#", and whitespace in various combinations
-      const cleanOrder = order.replace(/^(Order\s*)?#?\s*/i, '').trim();
-      const cleanSearch = searchTerm.replace(/^(Order\s*)?#?\s*/i, '').trim();
-      
+      const cleanOrder = order.replace(/^(Order\s*)?#?\s*/i, "").trim();
+      const cleanSearch = searchTerm.replace(/^(Order\s*)?#?\s*/i, "").trim();
+
       // Exact match of the cleaned order number
       return cleanOrder.toLowerCase() === cleanSearch.toLowerCase();
     });
-    
+
     if (orderExists) {
       setSelectedOrder(orderData.id); // Set the selected order to show details
     } else {
@@ -142,11 +142,7 @@ const CsDashboard = () => {
   };
 
   // Updated dropdown options - removed "Warehouse"
-  const dropdownOptions = [
-    "Customer Service",
-    "Printer",
-    "Manager",
-  ];
+  const dropdownOptions = ["Customer Service", "Printer", "Manager"];
 
   return (
     <div className="w-full h-screen text-white overflow-hidden">
@@ -159,11 +155,10 @@ const CsDashboard = () => {
       />
 
       {/* Main Content - 3 Panel Grid Layout matching Manager style */}
-      <div 
-        className="pt-16 w-full grid grid-cols-1 md:grid-cols-3 gap-2 px-2 pb-2" 
-        style={{ height: '100vh' }}
+      <div
+        className="pt-16 w-full grid grid-cols-1 md:grid-cols-3 gap-2 px-2 pb-2"
+        style={{ height: "100vh" }}
       >
-        
         {/* LEFT PANEL - Labels Printed */}
         <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
           <div className="p-3 border-b border-slate-700 flex-shrink-0">
@@ -190,7 +185,7 @@ const CsDashboard = () => {
               onDayToggle={handleDayToggle}
             />
           </div>
-          
+
           {/* Order Search and Details */}
           <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
             {/* Order Search - Fixed at top */}
@@ -201,20 +196,33 @@ const CsDashboard = () => {
               />
             </div>
 
-            {/* Order Details - Scrollable content */}
-            <div className="flex-1 overflow-y-auto min-h-0">
+            {/* Order Details - Conditional scrolling */}
+            <div className="flex-1 min-h-0">
               {selectedOrder === "ORDER_NOT_FOUND" ? (
-                // Show "Order Not Found" message
+                // Show "Order Not Found" message - no scrollbar needed
                 <div className="text-center text-red-400 p-4">
                   <div className="mb-4">
-                    <svg className="w-16 h-16 mx-auto mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833-.207 2.5 1.732 2.5z" />
+                    <svg
+                      className="w-16 h-16 mx-auto mb-4 text-red-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833-.207 2.5 1.732 2.5z"
+                      />
                     </svg>
-                    <h3 className="text-lg font-semibold mb-2">Order Not Found</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      Order Not Found
+                    </h3>
                     <p className="text-sm text-gray-400 mb-4">
-                      The order number you searched for does not exist in our shipped or unshipped orders.
+                      The order number you searched for does not exist in our
+                      shipped or unshipped orders.
                     </p>
-                    <button 
+                    <button
                       onClick={() => setSelectedOrder(null)}
                       className="px-4 py-2 bg-red-600/20 border border-red-500/30 rounded text-red-300 text-sm hover:bg-red-600/30 transition-colors cursor-pointer"
                     >
@@ -223,34 +231,41 @@ const CsDashboard = () => {
                   </div>
                 </div>
               ) : (
-                <OrderDetails
-                  orderNumber={selectedOrder || undefined}
-                  orderData={
-                    selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
-                      ? {
-                          id: "39060312948",
-                          // Clean the order number to prevent duplicate "Order #" prefix
-                          orderNumber: selectedOrder.replace(/^(Order\s*)?#?\s*/i, '').trim(),
-                          location: "ABB - 8",
-                          shipped: true,
-                          carrier: "FEDEX",
-                          store: "Shopify",
-                          primeStatus: false,
-                          priority: 1,
-                          timestamp: "7/2/2025, 10:40:54 AM",
-                          items: [
-                            {
-                              name: "3/16 12 Double - (2 rolls)",
-                              sku: "316-12inch-17SQ2",
-                              upc: "850015891045"
-                            }
-                          ]
-                        }
-                      : undefined
-                  }
-                  onClose={handleCloseOrderDetails}
-                  showCloseButton={!!selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"}
-                />
+                // Order Details with scrollbar when needed
+                <div className="overflow-y-auto scrollbar-visible h-full">
+                  <OrderDetails
+                    orderNumber={selectedOrder || undefined}
+                    orderData={
+                      selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
+                        ? {
+                            id: "39060312948",
+                            // Clean the order number to prevent duplicate "Order #" prefix
+                            orderNumber: selectedOrder
+                              .replace(/^(Order\s*)?#?\s*/i, "")
+                              .trim(),
+                            location: "ABB - 8",
+                            shipped: true,
+                            carrier: "FEDEX",
+                            store: "Shopify",
+                            primeStatus: false,
+                            priority: 1,
+                            timestamp: "7/2/2025, 10:40:54 AM",
+                            items: [
+                              {
+                                name: "3/16 12 Double - (2 rolls)",
+                                sku: "316-12inch-17SQ2",
+                                upc: "850015891045",
+                              },
+                            ],
+                          }
+                        : undefined
+                    }
+                    onClose={handleCloseOrderDetails}
+                    showCloseButton={
+                      !!selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
+                    }
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -261,13 +276,45 @@ const CsDashboard = () => {
           <div className="p-3 border-b border-slate-700 flex-shrink-0">
             <h2 className="text-lg font-semibold">Left Behind (#)</h2>
           </div>
-          <div className="flex-1 p-3 overflow-y-auto min-h-0">
+          <div className="flex-1 p-3 overflow-y-auto scrollbar-visible min-h-0">
             <div className="text-green-400">
               Order # 123-123456789-54321 - ABB1
             </div>
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        /* Custom scrollbar styles - consistent across all panels */
+        .scrollbar-visible {
+          scrollbar-width: thin;
+          scrollbar-color: #6b7280 #374151;
+        }
+
+        .scrollbar-visible::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .scrollbar-visible::-webkit-scrollbar-track {
+          background: #374151;
+          border-radius: 4px;
+          border: 1px solid #4b5563;
+        }
+
+        .scrollbar-visible::-webkit-scrollbar-thumb {
+          background: #6b7280;
+          border-radius: 4px;
+          border: 1px solid #4b5563;
+        }
+
+        .scrollbar-visible::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+
+        .scrollbar-visible::-webkit-scrollbar-thumb:active {
+          background: #d1d5db;
+        }
+      `}</style>
     </div>
   );
 };

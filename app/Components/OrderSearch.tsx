@@ -21,11 +21,8 @@ const OrderSearch: React.FC<OrderSearchProps> = ({
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchTerm.trim()) {
-      // Here you would typically search for the order
-      // For now, we'll just call the callback
       console.log('Searching for:', searchTerm)
       
-      // Mock order data - replace with real API call later
       const mockOrderData = {
         id: searchTerm,
         found: true
@@ -48,7 +45,6 @@ const OrderSearch: React.FC<OrderSearchProps> = ({
         style={{backgroundColor: 'var(--color-container)'}}
       />
       
-      {/* Optional: Show search results or recent searches here */}
       {searchTerm && (
         <div className="mt-2 text-xs sm:text-sm text-gray-400 text-center">
           Press Enter to search for "{searchTerm}"
