@@ -7,7 +7,6 @@ import LabelsPanel from "../Components/LabelsPanel";
 import DateSelector from "../Components/DateSelector";
 import PickupAvailability from "../Components/PickupAvailability";
 import OrderSearch from "../Components/OrderSearch";
-import OrderDetails from "../Components/OrderDetails";
 
 const Printer = () => {
   const router = useRouter();
@@ -19,7 +18,9 @@ const Printer = () => {
     return today.toISOString().split("T")[0];
   });
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [selectedOrderFromPanel, setSelectedOrderFromPanel] = useState<
+    string | null
+  >(null);
 
   // Event handlers - navigation
   const handleDashboardChange = (dashboard: string) => {
@@ -55,7 +56,8 @@ const Printer = () => {
   // This handles clicking on order numbers in Labels Printed
   const handleOrderClick = (orderId: string) => {
     console.log("Order clicked:", orderId);
-    setSelectedOrder(orderId);
+    // Set the order to be displayed in OrderSearch
+    setSelectedOrderFromPanel(orderId);
   };
 
   // This handles typing in the search box
@@ -63,70 +65,36 @@ const Printer = () => {
     console.log("Searching for:", searchTerm);
   };
 
-  // This handles when Enter is pressed in search box
-  const handleOrderFound = (orderData: any) => {
-    console.log("Order found:", orderData);
+  // Database-ready function - replace with actual database call
+  const fetchOrderDetails = async (orderNumber: string) => {
+    try {
+      // This is where you'd make your actual database call
+      // const response = await fetch(`/api/orders/${orderNumber}`);
+      // return await response.json();
 
-    // Get all shipped orders from LabelsPanel mock data
-    const mockShippedOrders = [
-      "Order #113-2565431-7744232",
-      "Order #112-4102767-8543429",
-      "Order #115-7128507-6526632",
-      "Order #118-9876543-1234567",
-      "Order #113-8292160-4582667",
-      "Order #216205-1",
-      "Order #216206",
-      "Order #216207-2",
-      "Order #112-9300928-7129830",
-      "Order #111-1520400-0921820",
-      "Order #119-8348262-9536234",
-      "Order #113-3273216-9601051",
-      "Order #120-0366922-6617039",
-      "Order #121-5870221-9199429",
-      "Order #122-8742621-6071408",
-      "Order #123-3080067-7901827",
-      "Order #124-3902312-6833829",
-      "Order #125-9876543-2109876",
-      "Order #126-1234567-8901234",
-      "Order #127-5555555-5555555",
-      "Order #128-1111111-1111111",
-      "Order #129-2222222-2222222",
-      "Order #130-3333333-3333333",
-      "Order #131-4444444-4444444",
-      "Order #132-6666666-6666666",
-      "Order #133-7777777-77777777",
-      "Order #134-8888888-8888888",
-      "Order #135-9999998-9999999",
-      "Order #136-0000000-0000000",
-    ];
-
-    // Combine all orders (shipped and unshipped)
-    const allOrders = [...mockShippedOrders, ...unshippedOrders];
-
-    // Check if the searched order exists in our order lists
-    const searchTerm = orderData.id.trim();
-
-    const orderExists = allOrders.some((order) => {
-      // Clean up both the order and search term for comparison
-      // Remove "Order", "#", and whitespace in various combinations
-      const cleanOrder = order.replace(/^(Order\s*)?#?\s*/i, "").trim();
-      const cleanSearch = searchTerm.replace(/^(Order\s*)?#?\s*/i, "").trim();
-
-      // Exact match of the cleaned order number
-      return cleanOrder.toLowerCase() === cleanSearch.toLowerCase();
-    });
-
-    if (orderExists) {
-      setSelectedOrder(orderData.id); // Set the selected order to show details
-    } else {
-      // Set a special state to show "order not found"
-      setSelectedOrder("ORDER_NOT_FOUND");
+      // For now, return mock data
+      return {
+        id: "39060312948",
+        orderNumber: orderNumber,
+        location: "ABB - 8",
+        shipped: true,
+        carrier: "FEDEX",
+        store: "Shopify",
+        primeStatus: false,
+        priority: 1,
+        timestamp: "7/2/2025, 10:40:54 AM",
+        items: [
+          {
+            name: "3/16 12 Double - (2 rolls)",
+            sku: "316-12inch-17SQ2",
+            upc: "850015891045",
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("Error fetching order details:", error);
+      return null;
     }
-  };
-
-  // This handles closing order details
-  const handleCloseOrderDetails = () => {
-    setSelectedOrder(null);
   };
 
   // Mock data
@@ -137,6 +105,39 @@ const Printer = () => {
     "Order #111-3902312-6833829",
     "Order #133-1111111-1111111",
     "Order #134-2222222-2222222",
+  ];
+
+  // Get all shipped orders from LabelsPanel mock data
+  const mockShippedOrders = [
+    "Order #113-2565431-7744232",
+    "Order #112-4102767-8543429",
+    "Order #115-7128507-6526632",
+    "Order #118-9876543-1234567",
+    "Order #113-8292160-4582667",
+    "Order #216205-1",
+    "Order #216206",
+    "Order #216207-2",
+    "Order #112-9300928-7129830",
+    "Order #111-1520400-0921820",
+    "Order #119-8348262-9536234",
+    "Order #113-3273216-9601051",
+    "Order #120-0366922-6617039",
+    "Order #121-5870221-9199429",
+    "Order #122-8742621-6071408",
+    "Order #123-3080067-7901827",
+    "Order #124-3902312-6833829",
+    "Order #125-9876543-2109876",
+    "Order #126-1234567-8901234",
+    "Order #127-5555555-5555555",
+    "Order #128-1111111-1111111",
+    "Order #129-2222222-2222222",
+    "Order #130-3333333-3333333",
+    "Order #131-4444444-4444444",
+    "Order #132-6666666-6666666",
+    "Order #133-7777777-77777777",
+    "Order #134-8888888-8888888",
+    "Order #135-9999998-9999999",
+    "Order #136-0000000-0000000",
   ];
 
   // Dropdown options for Printer page
@@ -167,7 +168,7 @@ const Printer = () => {
                 shippedOrders={[]}
                 unshippedOrders={unshippedOrders}
                 onOrderClick={handleOrderClick}
-                selectedOrder={selectedOrder}
+                selectedOrder={selectedOrderFromPanel}
               />
             </div>
           </div>
@@ -195,88 +196,14 @@ const Printer = () => {
             <div className="p-3 border-b border-slate-700 flex-shrink-0">
               <h2 className="text-lg font-semibold">Order Search</h2>
             </div>
-            <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
-              {/* Order Search - Fixed at top */}
-              <div className="mb-4 flex-shrink-0">
-                <div className="mb-4 flex-shrink-0">
-                  <OrderSearch
-                    onSearch={handleOrderSearch}
-                    onOrderFound={handleOrderFound}
-                  />
-                </div>
-              </div>
-
-              {/* Order Details - Conditional scrolling */}
-              <div className="flex-1 min-h-0">
-                {selectedOrder === "ORDER_NOT_FOUND" ? (
-                  // Show "Order Not Found" message - no scrollbar needed
-                  <div className="text-center text-red-400 p-4">
-                    <div className="mb-4">
-                      <svg
-                        className="w-16 h-16 mx-auto mb-4 text-red-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833-.207 2.5 1.732 2.5z"
-                        />
-                      </svg>
-                      <h3 className="text-lg font-semibold mb-2">
-                        Order Not Found
-                      </h3>
-                      <p className="text-sm text-gray-400 mb-4">
-                        The order number you searched for does not exist in our
-                        shipped or unshipped orders.
-                      </p>
-                      <button
-                        onClick={() => setSelectedOrder(null)}
-                        className="px-4 py-2 bg-red-600/20 border border-red-500/30 rounded text-red-300 text-sm hover:bg-red-600/30 transition-colors cursor-pointer"
-                      >
-                        Clear Search
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  // Order Details with scrollbar when needed
-                  <div className="overflow-y-auto scrollbar-visible h-full">
-                    <OrderDetails
-                      orderNumber={selectedOrder || undefined}
-                      orderData={
-                        selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
-                          ? {
-                              id: "39060312948",
-                              orderNumber: selectedOrder
-                                .replace(/^(Order\s*)?#?\s*/i, "")
-                                .trim(),
-                              location: "ABB - 8",
-                              shipped: true,
-                              carrier: "FEDEX",
-                              store: "Shopify",
-                              primeStatus: false,
-                              priority: 1,
-                              timestamp: "7/2/2025, 10:40:54 AM",
-                              items: [
-                                {
-                                  name: "3/16 12 Double - (2 rolls)",
-                                  sku: "316-12inch-17SQ2",
-                                  upc: "850015891045",
-                                },
-                              ],
-                            }
-                          : undefined
-                      }
-                      onClose={handleCloseOrderDetails}
-                      showCloseButton={
-                        !!selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
-                      }
-                    />
-                  </div>
-                )}
-              </div>
+            <div className="flex-1 p-3 overflow-hidden min-h-0">
+              <OrderSearch
+                onSearch={handleOrderSearch}
+                shippedOrders={mockShippedOrders}
+                unshippedOrders={unshippedOrders}
+                onFetchOrderDetails={fetchOrderDetails}
+                selectedOrderFromPanel={selectedOrderFromPanel}
+              />
             </div>
           </div>
         </div>
