@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../Components/Header";
-import LabelsPanel from "../Components/LabelsPanel";
-import DateSelector from "../Components/DateSelector";
-import OrderSearch from "../Components/OrderSearch";
-import OrderDetails from "../Components/OrderDetails";
+import Header from "../components/Header";
+import LabelsPanel from "../components/LabelsPanel";
+import DateSelector from "../components/DateSelector";
+import OrderSearch from "../components/OrderSearch";
+import OrderDetails from "../components/OrderDetails";
 
 const CsDashboard = () => {
   const router = useRouter();

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../Components/Header";
-import Panel from "../Components/Panel";
-import LabelsPanel from "../Components/LabelsPanel";
-import DateSelector from "../Components/DateSelector";
-import PickupAvailability from "../Components/PickupAvailability";
-import PerformanceMetrics from "../Components/PerformanceMetrics";
-import OrderSearch from "../Components/OrderSearch";
-import OrderDetails from "../Components/OrderDetails";
+import Header from "../components/Header";
+import Panel from "../components/Panel";
+import LabelsPanel from "../components/LabelsPanel";
+import DateSelector from "../components/DateSelector";
+import PickupAvailability from "../components/PickupAvailability";
+import PerformanceMetrics from "../components/PerformanceMetrics";
+import OrderSearch from "../components/OrderSearch";
+import OrderDetails from "../components/OrderDetails";
 
 const Manager = () => {
   const router = useRouter();
