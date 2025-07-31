@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./hooks/useAuth";
+import { runMigration } from './hooks/productMigrations'
 
 export default function LoginPage() {
   const router = useRouter();
