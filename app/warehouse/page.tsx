@@ -1,5 +1,6 @@
 "use client";
 
+// Libraries / hooks
 import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
@@ -28,7 +29,18 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/firebaseConfig";
+
+// Contexts and Definitions
 import { useUser } from "../contexts/userContext";
+import { Product, EnrichedOrderItem } from "../components/Products/definitions";
+
+// Components
+import { CollapsibleMatrix } from "../components/Products/CollapsibleMatrix";
+import { BubbleWrapMatrixContent } from "../components/Products/BubbleMatrix";
+import { InstapakMatrixContent } from "../components/Products/InstapakMatrix";
+import { LeicaMatrixContent } from "../components/Products/LeicaMatrix";
+import { TapeMatrixContent } from "../components/Products/TapeMatrix";
+import { OtherMatrixContent } from "../components/Products/OtherMatrix";
 
 interface Order {
   id: string;
@@ -42,7 +54,7 @@ interface Order {
   timeStamp: number;
 }
 
-interface OrderItem {
+export interface OrderItem {
   name: string;
   sku: string;
   upc?: string;
@@ -53,27 +65,7 @@ interface OrderItem {
   timeStamp: number;
 }
 
-interface Product {
-  sku: string;
-  name: string;
-  category: string;
-  subcategory?: string;
-  grade?: string;
-  bubble_size?: string;
-  width?: number;
-  length?: number;
-  roll_type?: string;
-  rolls_per_pack?: number;
-  density?: number;
-  density_display?: string;
-  pack_size?: number;
-  pack_unit?: string;
-  foam_type?: string;
-}
 
-interface EnrichedOrderItem extends OrderItem {
-  product?: Product;
-}
 
 const WarehouseDashboard = () => {
   const { user } = useUser();
@@ -87,8 +79,8 @@ const WarehouseDashboard = () => {
     bubbleWrap: false,
     tape: false,
     instapak: false,
-    stretchWrap: false,
-    equipment: false
+    leica: false,
+    other: false
   });
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -233,250 +225,47 @@ const WarehouseDashboard = () => {
     item.product?.category === 'instapak'
   );
 
+  const leicaItems = enrichedOrderItems.filter(item => 
+    item.product?.category === 'leica'
+  );
+
+  const tapeItems = enrichedOrderItems.filter(item => 
+    item.product?.category === 'tape'
+  );
+
+  const otherItems = enrichedOrderItems.filter(item => 
+    !item.product || !['bubble_wrap', 'instapak', 'leica', 'tape'].includes(item.product.category)
+  );
+
   // Debug logging
-  console.log('Bubble wrap items:', bubbleWrapItems);
-  console.log('Instapak items:', instapakItems);
-  console.log('Bubble wrap count:', bubbleWrapItems.length);
-  console.log('Instapak count:', instapakItems.length);
+  console.log('Category breakdown:', {
+    bubbleWrap: bubbleWrapItems.length,
+    instapak: instapakItems.length,
+    leica: leicaItems.length,
+    tape: tapeItems.length,
+    other: otherItems.length,
+    total: enrichedOrderItems.length
+  });
 
   // Calculate totals from actual order data
   const bubbleWrapTotal = bubbleWrapItems.length;
   const instapakTotal = instapakItems.length;
-  const otherItemsTotal = enrichedOrderItems.filter(item => 
-    item.product?.category !== 'bubble_wrap' && item.product?.category !== 'instapak'
-  ).length;
+  const leicaTotal = leicaItems.length;
+  const tapeTotal = tapeItems.length;
+  const otherItemsTotal = otherItems.length;
 
   // Calculate high priority counts from actual orders
   const bubbleWrapHighPriority = bubbleWrapItems.filter(item => item.priority > 5).length;
   const instapakHighPriority = instapakItems.filter(item => item.priority > 5).length;
+  const leicaHighPriority = leicaItems.filter(item => item.priority > 5).length;
+  const tapeHighPriority = tapeItems.filter(item => item.priority > 5).length;
+  const otherHighPriority = otherItems.filter(item => item.priority > 5).length;
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
-  };
-
-  // Collapsible Matrix Component
-  const CollapsibleMatrix = ({ 
-    title, 
-    icon, 
-    totalItems, 
-    highPriorityCount, 
-    isExpanded, 
-    onToggle, 
-    children, 
-    gradient 
-  }: {
-    title: string;
-    icon: string;
-    totalItems: number;
-    highPriorityCount: number;
-    isExpanded: boolean;
-    onToggle: () => void;
-    children: React.ReactNode;
-    gradient: string;
-  }) => (
-    <div className="space-y-2 mb-4">
-      {/* Summary Card */}
-      <div
-        className={`group flex items-center justify-between bg-gradient-to-r from-slate-700/50 to-slate-600/50 rounded-lg p-3 border-l-4 border-l-blue-400 border-r border-t border-b border-slate-600/50 hover:bg-slate-600/70 transition-all duration-200 cursor-pointer`}
-        onClick={onToggle}
-      >
-        <div className="flex items-center gap-3 flex-1">
-          <div className={`w-8 h-8 bg-gradient-to-r ${gradient} rounded-lg flex items-center justify-center text-sm`}>
-            {icon}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="text-sm font-medium text-white">{title}</h4>
-              {highPriorityCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300">
-                  {highPriorityCount} HIGH
-                </span>
-              )}
-            </div>
-            <div className="text-xs text-slate-400">
-              Click to expand detailed matrix
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-          <span className={`bg-gradient-to-r ${gradient} text-white px-3 py-1 rounded-full text-sm font-bold shadow-md min-w-[3rem] text-center`}>
-            {totalItems}
-          </span>
-          {isExpanded ? (
-            <ChevronUp className="w-4 h-4 text-slate-400" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-slate-400" />
-          )}
-        </div>
-      </div>
-      
-      {/* Expanded Matrix */}
-      {isExpanded && (
-        <div className="ml-4 animate-in slide-in-from-top-2 duration-200">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-
-  // Bubble Wrap Matrix Content - Now using clean product data!
-  const BubbleWrapMatrixContent = () => {
-    if (bubbleWrapItems.length === 0) {
-      return (
-        <div className="bg-slate-700/30 rounded-lg p-4 text-center">
-          <div className="text-slate-400 text-sm">
-            🎉 No bubble wrap orders to ship today!
-          </div>
-        </div>
-      );
-    }
-    
-    // Generate dynamic arrays based on actual product data
-    const sizes = [...new Set(bubbleWrapItems.map(item => item.product?.bubble_size).filter(Boolean))].sort();
-    const widths = [...new Set(bubbleWrapItems.map(item => item.product?.width).filter(Boolean))].sort((a, b) => a - b);
-    const rollTypes = ['single', 'double', 'triple', 'quad'];
-    
-    console.log('Matrix data - Sizes:', sizes, 'Widths:', widths);
-    
-    return (
-      <div className="space-y-4">
-        <div className="text-xs text-slate-400 mb-3">
-          📋 {bubbleWrapItems.length} bubble wrap items in {new Set(bubbleWrapItems.map(item => item.orderNumber)).size} orders
-        </div>
-        
-        {sizes.map(size => {
-          const sizeItems = bubbleWrapItems.filter(item => item.product?.bubble_size === size);
-          if (sizeItems.length === 0) return null;
-          
-          return (
-            <div key={size} className="bg-slate-700/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-medium text-white">{size}" Bubble</span>
-                <span className="text-xs text-slate-400">({sizeItems.length} items)</span>
-              </div>
-              
-              <div className="bg-slate-800/30 rounded p-2">
-                <div className="grid gap-1" style={{ gridTemplateColumns: `auto repeat(4, 1fr)` }}>
-                  {/* Header row */}
-                  <div className="text-xs text-slate-400 font-medium">Width</div>
-                  <div className="text-xs text-slate-400 font-medium text-center">Single</div>
-                  <div className="text-xs text-slate-400 font-medium text-center">Double</div>
-                  <div className="text-xs text-slate-400 font-medium text-center">Triple</div>
-                  <div className="text-xs text-slate-400 font-medium text-center">Quad</div>
-                  
-                  {/* Data rows - use dynamic widths from actual data */}
-                  {widths.map(width => {
-                    const widthItems = sizeItems.filter(item => item.product?.width === width);
-                    if (widthItems.length === 0) return null;
-                    
-                    return (
-                      <React.Fragment key={width}>
-                        <div className="text-xs font-medium text-slate-300 py-2">{width}\"</div>
-                        {rollTypes.map(rollType => {
-                          const matchingItems = widthItems.filter(item => item.product?.roll_type === rollType);
-                          const count = matchingItems.length;
-                          
-                          return (
-                            <div key={rollType} className="text-center">
-                              {count > 0 ? (
-                                <div className="bg-slate-600/50 rounded p-2 relative cursor-pointer hover:bg-slate-500/50 transition-colors group">
-                                  <div className="text-sm font-bold text-white">{count}</div>
-                                  <div className={`w-2 h-2 mx-auto mt-1 rounded-full ${
-                                    matchingItems.some(item => item.priority > 5) ? 'bg-red-400' :
-                                    matchingItems.some(item => item.priority > 2) ? 'bg-yellow-400' : 'bg-green-400'
-                                  } animate-pulse`}></div>
-                                  
-                                  {/* Tooltip */}
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                                    <div className="max-h-24 overflow-y-auto">
-                                      {matchingItems.map((item, idx) => (
-                                        <div key={idx} className="mb-1">
-                                          <div>Order: {item.orderNumber}</div>
-                                          <div className="text-slate-300">{item.product?.grade}</div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="bg-slate-800/30 rounded p-2">
-                                  <div className="text-xs text-slate-500">—</div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  // Instapak Matrix Content - Now using clean product data!
-  const InstapakMatrixContent = () => {
-    if (instapakItems.length === 0) {
-      return (
-        <div className="bg-slate-700/30 rounded-lg p-4 text-center">
-          <div className="text-slate-400 text-sm">
-            🎉 No Instapak orders to ship today!
-          </div>
-        </div>
-      );
-    }
-    
-    // Generate dynamic densities based on actual product data
-    const densities = [...new Set(instapakItems.map(item => item.product?.density_display).filter(Boolean))].sort();
-    
-    return (
-      <div className="space-y-3">
-        <div className="text-xs text-slate-400 mb-2">
-          📋 {instapakItems.length} Instapak items in {new Set(instapakItems.map(item => item.orderNumber)).size} orders
-        </div>
-        
-        <div className="grid grid-cols-3 gap-3">
-          {densities.map(density => {
-            const densityItems = instapakItems.filter(item => item.product?.density_display === density);
-            
-            return (
-              <div key={density} className="bg-slate-600/50 rounded-lg p-3 text-center relative cursor-pointer hover:bg-slate-500/50 transition-colors group">
-                <div className="text-sm font-medium text-white mb-1">{density}</div>
-                <div className="text-lg font-bold text-orange-400 mb-1">{densityItems.length}</div>
-                <div className="text-xs text-slate-400">orders</div>
-                <div className={`w-2 h-2 mx-auto mt-2 rounded-full ${
-                  densityItems.some(item => item.priority > 5) ? 'bg-red-400' :
-                  densityItems.some(item => item.priority > 2) ? 'bg-yellow-400' : 'bg-green-400'
-                } animate-pulse`}></div>
-                
-                {/* Tooltip showing order details */}
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                  <div className="max-h-32 overflow-y-auto">
-                    {densityItems.map((item, idx) => (
-                      <div key={idx} className="mb-1">
-                        <div>Order: {item.orderNumber}</div>
-                        <div className="text-slate-300">{item.product?.name}</div>
-                        <div className="text-slate-400">Pack: {item.product?.pack_size}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   };
 
   const carriers = [
@@ -695,7 +484,7 @@ const WarehouseDashboard = () => {
             </div>
           </div>
 
-          {/* Enhanced Packages to Ship with Clean Product Data */}
+          {/* Enhanced Packages to Ship with ALL Product Categories */}
           <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl p-4 border border-slate-700/50 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
             
@@ -744,9 +533,10 @@ const WarehouseDashboard = () => {
               </div>
             )}
 
-            {/* Clean Product-Based Matrices */}
+            {/* ALL Product Category Matrices */}
             <div className="max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-blue-500/20 hover:scrollbar-thumb-blue-500/40 scrollbar-thumb-rounded-full pr-2">
               
+              {/* Bubble Wrap Matrix */}
               {bubbleWrapItems.length > 0 && (
                 <CollapsibleMatrix
                   title="Bubble Wrap Orders"
@@ -757,10 +547,11 @@ const WarehouseDashboard = () => {
                   onToggle={() => toggleSection('bubbleWrap')}
                   gradient="from-blue-400 to-cyan-400"
                 >
-                  <BubbleWrapMatrixContent />
+                  <BubbleWrapMatrixContent bubbleWrapItems={bubbleWrapItems}/>
                 </CollapsibleMatrix>
               )}
 
+              {/* Instapak Matrix */}
               {instapakItems.length > 0 && (
                 <CollapsibleMatrix
                   title="Instapak Orders"
@@ -771,7 +562,52 @@ const WarehouseDashboard = () => {
                   onToggle={() => toggleSection('instapak')}
                   gradient="from-orange-400 to-red-400"
                 >
-                  <InstapakMatrixContent />
+                  <InstapakMatrixContent instapakItems={instapakItems}/>
+                </CollapsibleMatrix>
+              )}
+
+              {/* Leica Matrix */}
+              {leicaItems.length > 0 && (
+                <CollapsibleMatrix
+                  title="Leica Products"
+                  icon="📏"
+                  totalItems={leicaTotal}
+                  highPriorityCount={leicaHighPriority}
+                  isExpanded={expandedSections.leica}
+                  onToggle={() => toggleSection('leica')}
+                  gradient="from-green-400 to-emerald-400"
+                >
+                  <LeicaMatrixContent leicaItems={leicaItems}/>
+                </CollapsibleMatrix>
+              )}
+
+              {/* Tape Matrix */}
+              {tapeItems.length > 0 && (
+                <CollapsibleMatrix
+                  title="Tape Products"
+                  icon="📼"
+                  totalItems={tapeTotal}
+                  highPriorityCount={tapeHighPriority}
+                  isExpanded={expandedSections.tape}
+                  onToggle={() => toggleSection('tape')}
+                  gradient="from-purple-400 to-pink-400"
+                >
+                  <TapeMatrixContent tapeItems={tapeItems}/>
+                </CollapsibleMatrix>
+              )}
+
+              {/* Other Items Matrix */}
+              {otherItems.length > 0 && (
+                <CollapsibleMatrix
+                  title="Other Products"
+                  icon="📋"
+                  totalItems={otherItemsTotal}
+                  highPriorityCount={otherHighPriority}
+                  isExpanded={expandedSections.other}
+                  onToggle={() => toggleSection('other')}
+                  gradient="from-slate-400 to-slate-600"
+                >
+                  <OtherMatrixContent otherItems={otherItems}/>
                 </CollapsibleMatrix>
               )}
 
@@ -784,18 +620,15 @@ const WarehouseDashboard = () => {
                 </div>
               )}
 
-              {/* Show message if orders exist but no bubble wrap or instapak */}
-              {unshippedOrders.length > 0 && bubbleWrapItems.length === 0 && instapakItems.length === 0 && (
+              {/* Show message if orders exist but no categorized products */}
+              {unshippedOrders.length > 0 && enrichedOrderItems.length === 0 && (
                 <div className="text-center py-8 text-slate-400">
                   <div className="bg-slate-700/30 rounded-lg p-6">
                     <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">No Bubble Wrap or Instapak Orders</h3>
+                    <h3 className="text-lg font-medium mb-2">Loading Product Data</h3>
                     <p className="text-sm mb-3">
-                      You have {unshippedOrders.length} unshipped orders, but none contain bubble wrap or Instapak items.
+                      Orders found, but product enrichment is still loading...
                     </p>
-                    <div className="text-xs text-slate-500">
-                      Other items in orders: {otherItemsTotal}
-                    </div>
                   </div>
                 </div>
               )}
