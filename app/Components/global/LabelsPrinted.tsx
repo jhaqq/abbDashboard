@@ -22,7 +22,7 @@ const LabelsPrinted: React.FC<LabelsPrintedProps> = ({ shippedOrders, unshippedO
 
       <div className="flex flex-row gap-4 h-[calc(100%-3rem)]">
         <div className="flex-1 min-h-0">
-          <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-3 border border-emerald-500/20 h-full relative overflow-hidden">
+          <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-3 border border-emerald-500/20 h-full relative">
             <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-500/5 rounded-full blur-xl"></div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-emerald-400 flex items-center gap-2">
@@ -35,7 +35,7 @@ const LabelsPrinted: React.FC<LabelsPrintedProps> = ({ shippedOrders, unshippedO
             </div>
 
             <div className="space-y-1 h-[calc(100%-3rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-emerald-500/20 scrollbar-track-transparent">
-              {shippedOrders.slice(0, 20).map((order, idx) => (
+              {shippedOrders.map((order, idx) => (
                 <div
                   key={idx}
                   className="text-xs text-emerald-200 font-mono bg-emerald-900/20 rounded px-2 py-1 border border-emerald-500/10 hover:bg-emerald-900/30 transition-colors"
@@ -53,7 +53,7 @@ const LabelsPrinted: React.FC<LabelsPrintedProps> = ({ shippedOrders, unshippedO
         </div>
 
         <div className="flex-1 min-h-0">
-          <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl p-3 border border-amber-500/20 h-full relative overflow-hidden">
+          <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-xl p-3 border border-amber-500/20 h-full relative">
             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/5 rounded-full blur-xl"></div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-amber-400 flex items-center gap-2">
@@ -66,7 +66,7 @@ const LabelsPrinted: React.FC<LabelsPrintedProps> = ({ shippedOrders, unshippedO
             </div>
 
             <div className="space-y-1 h-[calc(100%-3rem)] overflow-y-auto scrollbar-thin scrollbar-thumb-amber-500/20 scrollbar-track-transparent">
-              {unshippedOrders.slice(0, 20).map((order, idx) => (
+              {unshippedOrders.map((order, idx) => (
                 <div
                   key={idx}
                   className="text-xs text-amber-200 font-mono bg-amber-900/20 rounded px-2 py-1 border border-amber-500/10 hover:bg-amber-900/30 transition-colors"
