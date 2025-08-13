@@ -14,7 +14,7 @@ import { db } from "@/firebaseConfig";
 
 // Contexts and Definitions
 import { useUser } from "../contexts/userContext";
-import { Product, EnrichedOrderItem } from "../components/Products/definitions";
+import { Product, EnrichedOrderItem } from '../components/Products/definitions'
 
 // Components
 import Header from "../components/global/Header";
