@@ -96,7 +96,7 @@ export const BubbleWrapMatrixContent = ({
                         return (
                           <div key={rollType} className="text-center">
                             {count > 0 ? (
-                              <div className="bg-slate-600/50 rounded p-2 relative cursor-pointer hover:bg-slate-500/50 transition-colors group">
+                              <div className="bg-slate-600/50 rounded p-2 relative hover:bg-slate-500/50 transition-colors group">
                                 <div className="text-sm font-bold text-white">
                                   {count}
                                 </div>
