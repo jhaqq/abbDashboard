@@ -17,17 +17,25 @@ export const BubbleWrapMatrixContent = ({
   }
 
   // Generate dynamic arrays based on actual product data
-  const sizes = [
+  // TypeScript safe matrix data processing
+
+  const sizes: string[] = [
     ...new Set(
-      bubbleWrapItems.map((item) => item.product?.bubble_size).filter(Boolean)
+      bubbleWrapItems
+        .map((item) => item.product?.bubble_size)
+        .filter((size): size is string => Boolean(size))
     ),
   ].sort();
-  const widths = [
+
+  const widths: number[] = [
     ...new Set(
-      bubbleWrapItems.map((item) => item.product?.width).filter(Boolean)
+      bubbleWrapItems
+        .map((item) => item.product?.width)
+        .filter((width): width is number => typeof width === "number")
     ),
   ].sort((a, b) => a - b);
-  const rollTypes = ["single", "double", "triple", "quad"];
+
+  const rollTypes: string[] = ["single", "double", "triple", "quad"];
 
   console.log("Bubble wrap matrix data - Sizes:", sizes, "Widths:", widths);
 

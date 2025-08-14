@@ -120,7 +120,7 @@ const OrderSearch: React.FC<OrderSearchProps> = ({
           <div className="space-y-4">
             {/* Order Header */}
             <div 
-              className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30 cursor-pointer hover:border-slate-500/50 hover:bg-slate-700/40 transition-all duration-200"
+              className="bg-slate-700/30 rounded-xl p-4 border border-slate-600/30"
               onClick={() => onOrderClick(searchResults)}
             >
               <div className="flex items-start justify-between mb-3">
@@ -134,7 +134,6 @@ const OrderSearch: React.FC<OrderSearchProps> = ({
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-lg">#{searchResults.orderNumber}</h3>
-                    <p className="text-slate-400 text-sm">Click for full details</p>
                   </div>
                 </div>
                 <div className={`px-2 py-1 rounded-full text-xs font-medium border ${priorityBadge.color}`}>

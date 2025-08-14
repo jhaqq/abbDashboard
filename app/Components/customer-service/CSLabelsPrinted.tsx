@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Package, CheckCircle, AlertTriangle, MapPin, Store, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { OrderDetailsModal } from '../global/OrderDetailsModal';
 import { CSOrder, CSProduct } from './shared-interfaces';
 
 interface CSLabelsPrintedProps {
@@ -102,7 +103,8 @@ const CSLabelsPrinted: React.FC<CSLabelsPrintedProps> = ({
   const shippedByLocation = groupOrdersByLocation(filteredShippedOrders);
   const unshippedByLocation = groupOrdersByLocation(filteredUnshippedOrders);
 
-  const OrderItem: React.FC<{ order: CSOrder; showLocation?: boolean }> = ({ 
+  // Memoize OrderItem to prevent unnecessary re-renders
+  const OrderItem = React.memo<{ order: CSOrder; showLocation?: boolean }>(({ 
     order, 
     showLocation = true 
   }) => (
@@ -142,13 +144,14 @@ const CSLabelsPrinted: React.FC<CSLabelsPrintedProps> = ({
         </span>
       </div>
     </button>
-  );
+  ));
 
-  const LocationSection: React.FC<{ 
+  // Memoize LocationSection to prevent unnecessary re-renders
+  const LocationSection = React.memo<{ 
     locationName: string; 
     orders: CSOrder[]; 
     isShipped: boolean 
-  }> = ({ locationName, orders, isShipped }) => {
+  }>(({ locationName, orders, isShipped }) => {
     const sectionKey = `${locationName}-${isShipped ? 'shipped' : 'unshipped'}`;
     const isCollapsed = collapsedSections[sectionKey] || false;
 
@@ -177,7 +180,7 @@ const CSLabelsPrinted: React.FC<CSLabelsPrintedProps> = ({
         </div>
         
         {!isCollapsed && (
-          <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+          <div className="space-y-2" style={{ contain: 'layout style' }}>
             {orders.map((order) => (
               <OrderItem key={order.id} order={order} showLocation={false} />
             ))}
@@ -185,7 +188,7 @@ const CSLabelsPrinted: React.FC<CSLabelsPrintedProps> = ({
         )}
       </div>
     );
-  };
+  });
 
   if (loading) {
     return (
@@ -319,13 +322,13 @@ const CSLabelsPrinted: React.FC<CSLabelsPrintedProps> = ({
       </div>
 
       {/* Order Details Modal */}
-      {/* {selectedOrder && (
+      {selectedOrder && (
         <OrderDetailsModal
           order={selectedOrder}
           productCache={productCache}
           onClose={() => setSelectedOrder(null)}
         />
-      )} */}
+      )}
     </>
   );
 };
