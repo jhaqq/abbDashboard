@@ -1,344 +1,441 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Header from "../components/Header";
-import Panel from "../components/Panel";
-import LabelsPanel from "../components/LabelsPanel";
-import DateSelector from "../components/DateSelector";
-import PickupAvailability from "../components/PickupAvailability";
-import PerformanceMetrics from "../components/PerformanceMetrics";
-import OrderSearch from "../components/OrderSearch";
-import OrderDetails from "../components/OrderDetails";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
+  where,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "@/firebaseConfig";
 
-const Manager = () => {
-  const router = useRouter();
+// Contexts and Definitions
+import { useUser } from "../contexts/userContext";
+import { Product, EnrichedOrderItem } from "../components/Products/definitions";
+import { CSOrder, CSProduct, CSOrderItem } from "../components/customer-service/shared-interfaces";
 
-  // State management - same as CS Dashboard
-  const [selectedDashboard, setSelectedDashboard] = useState("Manager");
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  });
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+// Components
+import Header from "../components/global/Header";
+import DateSelector from "../components/global/DateSelector";
+import CSLabelsPrinted from "../components/customer-service/CSLabelsPrinted";
+import PickupAvailability from "../components/printer/PickupAvailability";
+import OrderSearch from "../components/customer-service/OrderSearch";
+import { OrderDetailsModal } from "../components/global/OrderDetailsModal";
 
-  // Event handlers - updated to handle navigation
-  const handleDashboardChange = (dashboard: string) => {
-    setSelectedDashboard(dashboard);
+// Skeleton components
+import {
+  ManagerDashboardSkeleton,
+  CSLabelsPrintedSkeleton,
+  OrderSearchSkeleton,
+  ManagerPickupAvailabilitySkeleton
+} from "../components/global/manager-skeletons";
 
-    // Navigate to the corresponding page
-    switch (dashboard) {
-      case "Customer Service":
-        router.push("/customer-service");
-        break;
-      case "Printer":
-        router.push("/printer");
-        break;
-      case "Manager":
-        // Already on manager page, no need to navigate
-        break;
-      case "ABB1":
-        // For now, show alert since ABB1 page doesn't exist yet
-        alert("ABB1 dashboard coming soon!");
-        break;
-      case "ABB....":
-        // For now, show alert since ABB.... page doesn't exist yet
-        alert("ABB.... dashboard coming soon!");
-        break;
-      default:
-        // Unknown dashboard
-        console.log("Unknown dashboard:", dashboard);
-    }
-  };
+export interface OrderItem {
+  name: string;
+  sku: string;
+  upc?: string;
+  quantity?: number;
+  orderNumber: string;
+  orderId: string;
+  priority?: number;
+  timeStamp: number;
+}
 
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-  };
+const ManagerDashboard = () => {
+  // State Management
+  const { user } = useUser();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isSaturdayActive, setIsSaturdayActive] = useState<boolean>(false);
+  const [isSundayActive, setIsSundayActive] = useState<boolean>(false);
+  const [orders, setOrders] = useState<CSOrder[]>([]);
+  const [saturdayOrders, setSaturdayOrders] = useState<CSOrder[]>([]);
+  const [sundayOrders, setSundayOrders] = useState<CSOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDayToggle = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+  // Search and modal state
+  const [searchResults, setSearchResults] = useState<CSOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<CSOrder | null>(null);
+
+  // Product cache - load all products once on mount
+  const [productCache, setProductCache] = useState<Map<string, Product>>(
+    new Map()
+  );
+  const [productsLoaded, setProductsLoaded] = useState(false);
+
+  // Load ALL products once when component mounts (cached for entire session)
+  useEffect(() => {
+    const loadAllProducts = async () => {
+      try {
+        console.log("🔄 Loading product cache...");
+        const productsRef = collection(db, "products");
+        const snapshot = await getDocs(productsRef);
+
+        const cache = new Map<string, Product>();
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data() as Product;
+          cache.set(data.sku, data);
+        });
+
+        setProductCache(cache);
+        setProductsLoaded(true);
+        console.log(`✅ Cached ${cache.size} products in memory`);
+      } catch (error) {
+        console.error("❌ Failed to load product cache:", error);
+        setProductsLoaded(true);
+      }
+    };
+
+    loadAllProducts();
+  }, []);
+
+  // Helper function to get midnight timestamp for a given date
+  const getMidnightTimestamp = (date: Date): number => {
+    const midnight = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
     );
+    return midnight.getTime();
   };
 
-  // This handles clicking on order numbers in Labels Printed
-  const handleOrderClick = (orderId: string) => {
-    console.log("Order clicked:", orderId);
-    setSelectedOrder(orderId);
+  // Helper function to get the previous Saturday from a given date
+  const getPreviousSaturday = (date: Date): Date => {
+    const saturday = new Date(date);
+    saturday.setDate(saturday.getDate() - 2);
+    return saturday;
   };
 
-  // This handles typing in the search box
-  const handleOrderSearch = (searchTerm: string) => {
-    console.log("Searching for:", searchTerm);
-    // This gets called as user types
+  // Helper function to get the previous Sunday from a given date
+  const getPreviousSunday = (date: Date): Date => {
+    const sunday = new Date(date);
+    sunday.setDate(sunday.getDate() - 1);
+    return sunday;
   };
 
-  // This handles when Enter is pressed in search box
-  const handleOrderFound = (orderData: any) => {
-    console.log("Order found:", orderData);
+  // Fetch orders from ALL locations (Manager sees everything)
+  const fetchOrdersAllLocations = async (date: Date) => {
+    try {
+      const unixMs = getMidnightTimestamp(date);
+      console.log(
+        `Fetching orders from ALL locations for ${date.toDateString()}: ${new Date(
+          unixMs
+        ).toLocaleString()}`
+      );
 
-    // Get all shipped orders from LabelsPanel mock data
-    const mockShippedOrders = [
-      "Order #113-2565431-7744232",
-      "Order #112-4102767-8543429",
-      "Order #115-7128507-6526632",
-      "Order #118-9876543-1234567",
-      "Order #113-8292160-4582667",
-      "Order #216205-1",
-      "Order #216206",
-      "Order #216207-2",
-      "Order #112-9300928-7129830",
-      "Order #111-1520400-0921820",
-      "Order #119-8348262-9536234",
-      "Order #113-3273216-9601051",
-      "Order #120-0366922-6617039",
-      "Order #121-5870221-9199429",
-      "Order #122-8742621-6071408",
-      "Order #123-3080067-7901827",
-      "Order #124-3902312-6833829",
-      "Order #125-9876543-2109876",
-      "Order #126-1234567-8901234",
-      "Order #127-5555555-5555555",
-      "Order #128-1111111-1111111",
-      "Order #129-2222222-2222222",
-      "Order #130-3333333-3333333",
-      "Order #131-4444444-4444444",
-      "Order #132-6666666-6666666",
-      "Order #133-7777777-77777777",
-      "Order #134-8888888-8888888",
-      "Order #135-9999998-9999999",
-      "Order #136-0000000-0000000",
-    ];
+      const orderRef = collection(db, "orders");
 
-    // Combine all orders (shipped and unshipped)
-    const allOrders = [...mockShippedOrders, ...unshippedOrders];
+      const q = query(
+        orderRef,
+        where("timeStamp", ">=", unixMs),
+        where("timeStamp", "<", unixMs + 24 * 60 * 60 * 1000),
+        orderBy("timeStamp", "desc"),
+        limit(1000) // Manager can see more orders
+      );
 
-    // Check if the searched order exists in our order lists
-    const searchTerm = orderData.id.trim();
+      const querySnapshot = await getDocs(q);
 
-    const orderExists = allOrders.some((order) => {
-      // Clean up both the order and search term for comparison
-      // Remove "Order", "#", and whitespace in various combinations
-      const cleanOrder = order.replace(/^(Order\s*)?#?\s*/i, "").trim();
-      const cleanSearch = searchTerm.replace(/^(Order\s*)?#?\s*/i, "").trim();
+      if (querySnapshot.empty) {
+        console.log(`No orders found for ${date.toDateString()}.`);
+        return [];
+      }
 
-      // Exact match of the cleaned order number
-      return cleanOrder.toLowerCase() === cleanSearch.toLowerCase();
-    });
+      const fetchedOrders: CSOrder[] = querySnapshot.docs
+        .map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+              timeStamp: doc.data().timeStamp || doc.data().timeStamp,
+            } as CSOrder)
+        )
+        // Filter for ABB locations in code since we can't use multiple where clauses
+        .filter((order) => order.location && order.location.startsWith("ABB"));
 
-    if (orderExists) {
-      setSelectedOrder(orderData.id); // Set the selected order to show details
-    } else {
-      // Set a special state to show "order not found"
-      setSelectedOrder("ORDER_NOT_FOUND");
+      console.log(
+        `Found ${fetchedOrders.length} orders from all ABB locations on ${date.toDateString()}`
+      );
+      return fetchedOrders;
+    } catch (error) {
+      console.error(`Error fetching orders for ${date.toDateString()}:`, error);
+      throw error;
     }
   };
 
-  const handleCloseOrderDetails = () => {
-    setSelectedOrder(null);
+  // Fetch Saturday orders
+  const fetchSaturday = async (mondayDate: Date) => {
+    try {
+      const saturdayDate = getPreviousSaturday(mondayDate);
+      console.log(
+        `📅 Fetching Saturday orders for ${saturdayDate.toDateString()}`
+      );
+
+      const orders = await fetchOrdersAllLocations(saturdayDate);
+      setSaturdayOrders(orders);
+      return orders;
+    } catch (error) {
+      console.error("Error fetching Saturday orders:", error);
+      setSaturdayOrders([]);
+      return [];
+    }
   };
 
-  // Mock data
-  const unshippedOrders = [
-    "Order #114-5870221-9199429",
-    "Order #113-8742621-6071408",
-    "Order #112-3080067-7901827",
-    "Order #111-3902312-6833829",
-    "Order #133-1111111-1111111",
-    "Order #134-2222222-2222222",
-  ];
+  // Fetch Sunday orders
+  const fetchSunday = async (mondayDate: Date) => {
+    try {
+      const sundayDate = getPreviousSunday(mondayDate);
+      console.log(`📅 Fetching Sunday orders for ${sundayDate.toDateString()}`);
 
-  // Extended dropdown options for Manager page
-  const dropdownOptions = [
-    "Customer Service",
-    "Printer",
-    "Manager",
-    "ABB1",
-    "ABB....",
-  ];
+      const orders = await fetchOrdersAllLocations(sundayDate);
+      setSundayOrders(orders);
+      return orders;
+    } catch (error) {
+      console.error("Error fetching Sunday orders:", error);
+      setSundayOrders([]);
+      return [];
+    }
+  };
+
+  // Auto-enable Saturday and Sunday toggles when Monday is selected
+  useEffect(() => {
+    if (selectedDate.getDay() === 1) {
+      console.log(
+        "📅 Monday detected - auto-enabling Saturday and Sunday toggles"
+      );
+      setIsSaturdayActive(true);
+      setIsSundayActive(true);
+    }
+  }, [selectedDate]);
+
+  // Main effect to fetch orders based on date selector state
+  useEffect(() => {
+    const fetchAllRelevantOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Always fetch main selected date orders
+        const mainOrders = await fetchOrdersAllLocations(selectedDate);
+        setOrders(mainOrders);
+
+        // If it's Monday and toggles are active, fetch weekend data
+        if (selectedDate.getDay() === 1) {
+          const promises = [];
+
+          if (isSaturdayActive) {
+            promises.push(fetchSaturday(selectedDate));
+          } else {
+            setSaturdayOrders([]);
+          }
+
+          if (isSundayActive) {
+            promises.push(fetchSunday(selectedDate));
+          } else {
+            setSundayOrders([]);
+          }
+
+          if (promises.length > 0) {
+            await Promise.all(promises);
+          }
+        } else {
+          setSaturdayOrders([]);
+          setSundayOrders([]);
+        }
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        setError(
+          error instanceof Error ? error.message : "Failed to fetch orders"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (productsLoaded) {
+      fetchAllRelevantOrders();
+    }
+  }, [selectedDate, isSaturdayActive, isSundayActive, productsLoaded]);
+
+  // Handle date selector changes
+  const handleDateChange = useCallback(
+    (dateData: {
+      selectedDate: Date;
+      isSaturdayActive: boolean;
+      isSundayActive: boolean;
+    }) => {
+      console.log("📅 Date selector changed:", {
+        date: dateData.selectedDate.toDateString(),
+        saturday: dateData.isSaturdayActive,
+        sunday: dateData.isSundayActive,
+      });
+
+      setSelectedDate(dateData.selectedDate);
+      setIsSaturdayActive(dateData.isSaturdayActive);
+      setIsSundayActive(dateData.isSundayActive);
+    },
+    []
+  );
+
+  // Handle order click with proper typing
+  const handleOrderClick = useCallback((order: CSOrder) => {
+    setSelectedOrder(order);
+  }, []);
+
+  // Handle order search
+  const handleOrderSearch = async (orderNumber: string) => {
+    try {
+      console.log("🔍 Searching for order:", orderNumber);
+      
+      // First check in current loaded orders
+      const allCurrentOrders = [...orders, ...saturdayOrders, ...sundayOrders];
+      let foundOrder = allCurrentOrders.find(
+        order => order.orderNumber.toLowerCase().includes(orderNumber.toLowerCase())
+      );
+
+      if (foundOrder) {
+        setSearchResults(foundOrder);
+        return;
+      }
+
+      // If not found in current orders, search in Firebase across all locations
+      const orderRef = collection(db, "orders");
+      const q = query(
+        orderRef,
+        where("orderNumber", "==", orderNumber),
+        limit(1)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const orderDoc = querySnapshot.docs[0];
+        foundOrder = {
+          id: orderDoc.id,
+          ...orderDoc.data(),
+          timeStamp: orderDoc.data().timeStamp?.toMillis?.() || orderDoc.data().timeStamp,
+        } as CSOrder;
+        
+        setSearchResults(foundOrder);
+      } else {
+        setSearchResults(null);
+        console.log("Order not found:", orderNumber);
+      }
+    } catch (error) {
+      console.error("Error searching for order:", error);
+      setSearchResults(null);
+    }
+  };
+
+  // Combine all orders for processing
+  const allOrders = [...orders, ...saturdayOrders, ...sundayOrders];
+  const unshippedOrders = allOrders.filter((order) => order.shipped === false);
+  const shippedOrders = allOrders.filter((order) => order.shipped === true);
+
+  if (!productsLoaded) {
+    return (
+      <div className="h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white p-4 sm:p-6 flex flex-col overflow-hidden">
+        {/* Header */}
+        <Header user={user} />
+
+        {/* Loading message */}
+        {/* <div className="mb-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+          <p className="text-blue-300 text-sm">
+            🔄 Loading product catalog... (
+            {productCache.size > 0 ? productCache.size : 0}/~92 products)
+          </p>
+        </div> */}
+
+        {/* Manager Dashboard Skeleton */}
+        <ManagerDashboardSkeleton />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white p-4 sm:p-6 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-slate-400">Please log in to view the dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full h-screen text-white overflow-hidden">
-      <Header
-        userName="NAME"
-        location="ABB-#"
-        showDropdown={true}
-        dropdownOptions={dropdownOptions}
-        onDropdownChange={handleDashboardChange}
-        selectedOption={selectedDashboard}
-      />
+    <div className="h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white p-4 sm:p-6 flex flex-col overflow-hidden">
+      {/* Header */}
+      <Header user={user} />
 
-      {/* Main Content - EXACT SAME structure as CS Dashboard */}
-      <div className="pt-16 w-full h-full flex flex-col gap-2 px-2 pb-2">
-        {/* TOP ROW - 3 Panels in a row */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 min-h-0">
-          {/* LEFT PANEL - Labels Printed */}
-          <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
-            <div className="p-3 border-b border-slate-700 flex-shrink-0">
-              <h2 className="text-lg font-semibold">Labels Printed</h2>
-            </div>
-            <div className="flex-1 p-3 overflow-hidden min-h-0">
-              <LabelsPanel
-                shippedOrders={[]}
-                unshippedOrders={unshippedOrders}
-                onOrderClick={handleOrderClick}
-                selectedOrder={selectedOrder}
-              />
-            </div>
-          </div>
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+          <p className="text-red-400">Error: {error}</p>
+        </div>
+      )}
 
-          {/* CENTER PANEL - Date Selector + Pickup Availability */}
-          <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
-            {/* Date Selector - Fixed at top inside panel */}
-            <div className="p-3 border-b border-slate-700 flex-shrink-0">
-              <DateSelector
-                selectedDate={selectedDate}
-                onDateChange={handleDateChange}
-                selectedDays={selectedDays}
-                onDayToggle={handleDayToggle}
-              />
-            </div>
-
-            {/* Pickup Availability */}
-            <div className="flex-1 p-3 overflow-y-auto min-h-0">
-              <PickupAvailability />
-            </div>
-          </div>
-
-          {/* RIGHT PANEL - Order Search + Order Details */}
-          <div className="bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
-            <div className="p-3 border-b border-slate-700 flex-shrink-0">
-              <h2 className="text-lg font-semibold">Order Search</h2>
-            </div>
-            <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
-              {/* Order Search - Fixed at top */}
-              <div className="mb-4 flex-shrink-0">
-                <OrderSearch
-                  onSearch={handleOrderSearch}
-                  onOrderFound={handleOrderFound}
-                />
-              </div>
-
-              {/* Order Details - Conditional scrolling */}
-              <div className="flex-1 min-h-0">
-                {selectedOrder === "ORDER_NOT_FOUND" ? (
-                  // Show "Order Not Found" message - no scrollbar needed
-                  <div className="text-center text-red-400 p-4">
-                    <div className="mb-4">
-                      <svg
-                        className="w-16 h-16 mx-auto mb-4 text-red-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833-.207 2.5 1.732 2.5z"
-                        />
-                      </svg>
-                      <h3 className="text-lg font-semibold mb-2">
-                        Order Not Found
-                      </h3>
-                      <p className="text-sm text-gray-400 mb-4">
-                        The order number you searched for does not exist in our
-                        shipped or unshipped orders.
-                      </p>
-                      <button
-                        onClick={() => setSelectedOrder(null)}
-                        className="px-4 py-2 bg-red-600/20 border border-red-500/30 rounded text-red-300 text-sm hover:bg-red-600/30 transition-colors cursor-pointer"
-                      >
-                        Clear Search
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  // Order Details with scrollbar when needed
-                  <div className="overflow-y-auto scrollbar-visible h-full">
-                    <OrderDetails
-                      orderNumber={selectedOrder || undefined}
-                      orderData={
-                        selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
-                          ? {
-                              id: "39060312948",
-                              orderNumber: selectedOrder
-                                .replace(/^(Order\s*)?#?\s*/i, "")
-                                .trim(),
-                              location: "ABB - 8",
-                              shipped: true,
-                              carrier: "FEDEX",
-                              store: "Shopify",
-                              primeStatus: false,
-                              priority: 1,
-                              timestamp: "7/2/2025, 10:40:54 AM",
-                              items: [
-                                {
-                                  name: "3/16 12 Double - (2 rolls)",
-                                  sku: "316-12inch-17SQ2",
-                                  upc: "850015891045",
-                                },
-                              ],
-                            }
-                          : undefined
-                      }
-                      onClose={handleCloseOrderDetails}
-                      showCloseButton={
-                        !!selectedOrder && selectedOrder !== "ORDER_NOT_FOUND"
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Three Column Layout - Responsive */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 min-h-0 mt-4">
+        
+        {/* Left Column - Labels Printed */}
+        <div className="flex flex-col gap-4 min-h-0">
+          {loading ? (
+            <CSLabelsPrintedSkeleton />
+          ) : (
+            <CSLabelsPrinted
+              shippedOrders={shippedOrders}
+              unshippedOrders={unshippedOrders}
+              productCache={productCache}
+              allOrders={allOrders}
+              loading={loading}
+            />
+          )}
         </div>
 
-        {/* BOTTOM ROW - Performance Metrics Panel */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden flex flex-col min-h-0">
-          <div className="p-3 border-b border-slate-700 flex-shrink-0">
-            <h2 className="text-lg font-semibold">Performance Metrics</h2>
-          </div>
-          <div className="flex-1 p-3 overflow-y-auto scrollbar-visible min-h-0">
-            <PerformanceMetrics />
-          </div>
+        {/* Center Column - Date Selector & Pickup Availability */}
+        <div className="flex flex-col gap-4 min-h-0">
+          <DateSelector
+            selectedDate={selectedDate}
+            isSaturdayActive={isSaturdayActive}
+            isSundayActive={isSundayActive}
+            onDateChange={handleDateChange}
+          />
+          
+          {loading ? (
+            <ManagerPickupAvailabilitySkeleton />
+          ) : (
+            <PickupAvailability />
+          )}
+        </div>
+
+        {/* Right Column - Order Search */}
+        <div className="flex flex-col gap-4 min-h-0">
+          {loading ? (
+            <OrderSearchSkeleton />
+          ) : (
+            <OrderSearch
+              onSearch={handleOrderSearch}
+              searchResults={searchResults}
+              productCache={productCache}
+              onOrderClick={handleOrderClick}
+              loading={loading}
+            />
+          )}
         </div>
       </div>
 
-      <style jsx>{`
-        /* Custom scrollbar styles - consistent across all panels */
-        .scrollbar-visible {
-          scrollbar-width: thin;
-          scrollbar-color: #6b7280 #374151;
-        }
-
-        .scrollbar-visible::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .scrollbar-visible::-webkit-scrollbar-track {
-          background: #374151;
-          border-radius: 4px;
-          border: 1px solid #4b5563;
-        }
-
-        .scrollbar-visible::-webkit-scrollbar-thumb {
-          background: #6b7280;
-          border-radius: 4px;
-          border: 1px solid #4b5563;
-        }
-
-        .scrollbar-visible::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
-        }
-
-        .scrollbar-visible::-webkit-scrollbar-thumb:active {
-          background: #d1d5db;
-        }
-      `}</style>
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          productCache={productCache}
+          onClose={() => setSelectedOrder(null)}
+        />
+      )}
     </div>
   );
 };
 
-export default Manager;
+export default ManagerDashboard;

@@ -70,7 +70,20 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
       const location = urlParams.get('location');
       
       if (location && user?.userType.toLowerCase() === 'manager') {
-        setSelectedDepartment(`${location.toUpperCase()} Warehouse`);
+        // Map the URL location parameter back to display format
+        const locationMap: { [key: string]: string } = {
+          '1': 'ABB1 Warehouse',
+          '2': 'ABB2 Warehouse', 
+          '3': 'ABB3 Warehouse',
+          '4': 'ABB4 Warehouse',
+          '5': 'ABB5 Warehouse',
+          '6': 'ABB6 Warehouse',
+          '7': 'ABB7 Warehouse',
+          '8': 'ABB8 Warehouse',
+          'mo': 'ABBMO Warehouse'
+        };
+        
+        setSelectedDepartment(locationMap[location] || 'Warehouse');
       } else if (user?.userType.toLowerCase() === 'warehouse') {
         setSelectedDepartment('Warehouse');
       } else {
@@ -116,8 +129,23 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
       default:
         // Handle warehouse location selections for managers
         if (department.includes('Warehouse')) {
-          const location = department.replace(' Warehouse', '').toLowerCase();
-          router.push(`/warehouse?location=${location}`);
+          // Map display names to URL parameters
+          const locationUrlMap: { [key: string]: string } = {
+            'ABB1 Warehouse': '1',
+            'ABB2 Warehouse': '2',
+            'ABB3 Warehouse': '3',
+            'ABB4 Warehouse': '4',
+            'ABB5 Warehouse': '5',
+            'ABB6 Warehouse': '6',
+            'ABB7 Warehouse': '7',
+            'ABB8 Warehouse': '8',
+            'ABBMO Warehouse': 'mo'
+          };
+          
+          const locationParam = locationUrlMap[department];
+          if (locationParam) {
+            router.push(`/warehouse?location=${locationParam}`);
+          }
         }
         break;
     }
@@ -138,7 +166,7 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
             GOOD MORNING {user?.firstName?.toUpperCase()}
-            {user?.userType.toLowerCase() === 'warehouse' && ` @ ABB-${user?.location}`}
+            {user?.userType.toLowerCase() === 'warehouse' && user?.location && ` @ ABB-${user?.location}`}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             {selectedDepartment} Management Dashboard

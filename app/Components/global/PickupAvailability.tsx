@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Clock, CheckCircle, XCircle } from "lucide-react";
 import {
   doc,
@@ -27,26 +28,48 @@ interface LocationDocument {
 
 const PickupAvailability: React.FC = () => {
   const { user } = useUser();
-  const [locationData, setLocationData] = useState<LocationDocument | null>(
-    null
-  );
+  const searchParams = useSearchParams();
+  const [locationData, setLocationData] = useState<LocationDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null); // Track which carrier is being updated
   const [error, setError] = useState<string | null>(null);
 
-  const userLocation = "ABB-" + user?.location;
+  // Get effective location - from URL param (for managers) or user location (for warehouse workers)
+  const getEffectiveLocation = (): string | null => {
+    const locationParam = searchParams?.get('location');
+    
+    if (locationParam) {
+      // Manager accessing specific warehouse - convert URL param to Firebase document ID format
+      const locationCode = locationParam.toUpperCase() === 'MO' ? 'MO' : locationParam;
+      return `ABB-${locationCode}`;  // Firebase document ID format
+    }
+    
+    // Warehouse worker - use their assigned location
+    return user?.location ? `ABB-${user.location}` : null;  // Firebase document ID format
+  };
 
-  // Listen to location data for user's location
+  // Get display location for UI (with spaces)
+  const getDisplayLocation = (): string | null => {
+    const effectiveLocation = getEffectiveLocation();
+    if (!effectiveLocation) return null;
+    
+    // Convert ABB-X to ABB - X for display
+    return effectiveLocation.replace('ABB-', 'ABB - ');
+  };
+
+  // Listen to location data for effective location
   useEffect(() => {
-    if (!userLocation) {
+    const effectiveLocation = getEffectiveLocation();
+    
+    if (!effectiveLocation) {
       setLoading(false);
-      setError("No user location found");
+      setError("No location found");
       return;
     }
 
-    console.log(`📍 Listening to location data for: ${userLocation}`);
+    console.log(`📍 Listening to location data for: ${effectiveLocation}`);
 
-    const locationRef = doc(db, "locations", userLocation);
+    const locationRef = doc(db, "locations", effectiveLocation);
 
     const unsubscribe = onSnapshot(
       locationRef,
@@ -55,11 +78,11 @@ const PickupAvailability: React.FC = () => {
           const data = doc.data() as LocationDocument;
           setLocationData(data);
           setError(null);
-          console.log(`📦 Location data loaded for ${userLocation}:`, data);
+          console.log(`📦 Location data loaded for ${effectiveLocation}:`, data);
         } else {
-          console.warn(`⚠️  No location document found for: ${userLocation}`);
+          console.warn(`⚠️  No location document found for: ${effectiveLocation}`);
           setLocationData(null);
-          setError(`No location data found for ${userLocation}`);
+          setError(`No location data found for ${effectiveLocation}`);
         }
         setLoading(false);
       },
@@ -71,13 +94,15 @@ const PickupAvailability: React.FC = () => {
     );
 
     return unsubscribe;
-  }, [user?.location]);
+  }, [user?.location, searchParams]); // Re-run when user location or URL params change
 
   // Toggle carrier availability
   const toggleCarrierAvailability = async (
     carrierId: "fedex" | "ups" | "usps"
   ) => {
-    if (!user?.location || !locationData || updating) return;
+    const effectiveLocation = getEffectiveLocation();
+    
+    if (!effectiveLocation || !locationData || updating) return;
 
     setUpdating(carrierId);
 
@@ -86,10 +111,10 @@ const PickupAvailability: React.FC = () => {
       const newAvailability = !currentAvailability;
 
       console.log(
-        `🔄 Toggling ${carrierId} from ${currentAvailability} to ${newAvailability}`
+        `🔄 Toggling ${carrierId} from ${currentAvailability} to ${newAvailability} at ${effectiveLocation}`
       );
 
-      await updateDoc(doc(db, "locations", userLocation), {
+      await updateDoc(doc(db, "locations", effectiveLocation), {
         [`carriers.${carrierId}.available`]: newAvailability,
         [`carriers.${carrierId}.lastUpdated`]: serverTimestamp(),
         lastUpdated: serverTimestamp(),
@@ -114,6 +139,10 @@ const PickupAvailability: React.FC = () => {
     return names[carrierId as keyof typeof names] || carrierId.toUpperCase();
   };
 
+  // Get current effective location for display
+  const currentLocation = getEffectiveLocation();
+  const displayLocation = getDisplayLocation();
+
   // Loading state
   if (loading) {
     return (
@@ -122,6 +151,11 @@ const PickupAvailability: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-cyan-400" />
           Pickup Availability
+          {displayLocation && (
+            <span className="text-lg font-semibold text-white">
+              - {displayLocation}
+            </span>
+          )}
         </h3>
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
@@ -143,6 +177,11 @@ const PickupAvailability: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-cyan-400" />
           Pickup Availability
+          {displayLocation && (
+            <span className="text-lg font-semibold text-white">
+              - {displayLocation}
+            </span>
+          )}
         </h3>
         <div className="text-center py-8 text-red-400">
           <XCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -160,6 +199,11 @@ const PickupAvailability: React.FC = () => {
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5 text-cyan-400" />
           Pickup Availability
+          {currentLocation && (
+            <span className="text-lg font-semibold text-white">
+              - {currentLocation}
+            </span>
+          )}
         </h3>
         <div className="text-center py-8 text-slate-400">
           <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -177,9 +221,9 @@ const PickupAvailability: React.FC = () => {
       <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
         <Clock className="w-5 h-5 text-cyan-400" />
         Pickup Availability
-        {locationData.location && (
-          <span className="text-sm text-slate-400 font-normal">
-            - {locationData.location}
+        {locationData.location && displayLocation && (
+          <span className="text-lg font-semibold text-white">
+            — {displayLocation}
           </span>
         )}
       </h3>
@@ -261,7 +305,7 @@ const PickupAvailability: React.FC = () => {
       {process.env.NODE_ENV === "development" && locationData && (
         <div className="mt-4 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
           <div className="text-blue-300">
-            Debug: Location "{locationData.location}" | Manager:{" "}
+            Debug: Location "{currentLocation}" | Manager:{" "}
             {locationData.managerID}
           </div>
         </div>

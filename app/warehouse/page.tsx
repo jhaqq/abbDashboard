@@ -2,6 +2,7 @@
 
 // Libraries / hooks
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   collection,
   query,
@@ -59,6 +60,7 @@ export interface OrderItem {
 
 const WarehouseDashboard = () => {
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isSaturdayActive, setIsSaturdayActive] = useState<boolean>(false);
   const [isSundayActive, setIsSundayActive] = useState<boolean>(false);
@@ -73,6 +75,31 @@ const WarehouseDashboard = () => {
     new Map()
   );
   const [productsLoaded, setProductsLoaded] = useState(false);
+
+  // Get effective location - from URL param (for managers) or user location (for warehouse workers)
+  const getEffectiveLocation = (): string | null => {
+    const locationParam = searchParams?.get('location');
+    
+    if (locationParam) {
+      // Manager accessing specific warehouse - map URL param to location
+      const locationMap: { [key: string]: string } = {
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5': '5',
+        '6': '6',
+        '7': '7',
+        '8': '8',
+        'mo': 'MO'
+      };
+      
+      return locationMap[locationParam] || null;
+    }
+    
+    // Warehouse worker - use their assigned location
+    return user?.location || null;
+  };
 
   // Load ALL products once when component mounts (cached for entire session)
   useEffect(() => {
@@ -127,20 +154,22 @@ const WarehouseDashboard = () => {
   // Fetch orders for main selected date
   const fetchOrders = async (date: Date) => {
     try {
-      if (!user?.location) {
-        console.log("Waiting for user location...");
+      const effectiveLocation = getEffectiveLocation();
+      
+      if (!effectiveLocation) {
+        console.log("Waiting for location...");
         return [];
       }
 
       const unixMs = getMidnightTimestamp(date);
       console.log(
-        `Fetching orders for ${date.toDateString()}: ${new Date(
+        `Fetching orders for location ${effectiveLocation} on ${date.toDateString()}: ${new Date(
           unixMs
         ).toLocaleString()}`
       );
 
       const orderRef = collection(db, "orders");
-      const expectedLocationFormat = `ABB - ${user.location}`;
+      const expectedLocationFormat = `ABB - ${effectiveLocation}`;
 
       const q = query(
         orderRef,
@@ -153,9 +182,7 @@ const WarehouseDashboard = () => {
 
       if (querySnapshot.empty) {
         console.log(
-          `No orders found for location ${
-            user.location
-          } on ${date.toDateString()}.`
+          `No orders found for location ${effectiveLocation} on ${date.toDateString()}.`
         );
         return [];
       }
@@ -169,9 +196,7 @@ const WarehouseDashboard = () => {
       );
 
       console.log(
-        `Found ${fetchedOrders.length} orders for ABB - ${
-          user.location
-        } on ${date.toDateString()}`
+        `Found ${fetchedOrders.length} orders for ABB - ${effectiveLocation} on ${date.toDateString()}`
       );
       return fetchedOrders;
     } catch (error) {
@@ -226,14 +251,16 @@ const WarehouseDashboard = () => {
     }
   }, [selectedDate]);
 
-  // Main effect to fetch orders based on date selector state
+  // Main effect to fetch orders based on date selector state and location
   useEffect(() => {
     const fetchAllRelevantOrders = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        if (!user?.location) {
+        const effectiveLocation = getEffectiveLocation();
+        
+        if (!effectiveLocation) {
           return;
         }
 
@@ -277,11 +304,12 @@ const WarehouseDashboard = () => {
       }
     };
 
-    if (user?.location && productsLoaded) {
+    if (productsLoaded && (user?.location || searchParams?.get('location'))) {
       fetchAllRelevantOrders();
     }
   }, [
     user?.location,
+    searchParams,
     selectedDate,
     isSaturdayActive,
     isSundayActive,
@@ -405,6 +433,9 @@ const WarehouseDashboard = () => {
     { label: "Efficiency", value: "94%", change: "+2%", positive: true },
   ];
 
+  // Get current effective location for display
+  const currentLocation = getEffectiveLocation();
+
   // Show skeleton loading states instead of aggressive loading screen
   if (!productsLoaded) {
     return (
@@ -466,6 +497,16 @@ const WarehouseDashboard = () => {
         </div>
       )}
 
+      {/* Location Info - Show current location being viewed */}
+      {currentLocation && (
+        <div className="mb-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-3 text-xs">
+          <p className="text-cyan-300">
+            📊 Viewing orders for: ABB - {currentLocation}
+            {searchParams?.get('location') && ' (Manager View)'}
+          </p>
+        </div>
+      )}
+
       {/* Debug Info - Remove in production */}
       {process.env.NODE_ENV === "development" && (
         <div className="mb-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs">
@@ -492,7 +533,7 @@ const WarehouseDashboard = () => {
           <LabelsPrinted
             shippedOrders={shippedOrders}
             unshippedOrders={unshippedOrders}
-            productCache={productCache} // Add this line
+            productCache={productCache}
           />
         </div>
 
