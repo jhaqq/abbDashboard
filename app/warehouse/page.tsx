@@ -14,7 +14,7 @@ import { db } from "@/firebaseConfig";
 
 // Contexts and Definitions
 import { useUser } from "../contexts/userContext";
-import { Product, EnrichedOrderItem } from '../components/Products/definitions'
+import { Product, EnrichedOrderItem } from "../components/Products/definitions";
 
 // Components
 import Header from "../components/global/Header";
@@ -31,7 +31,7 @@ import {
   LabelsPrintedSkeleton,
   OrdersToShipSkeleton,
   PickupAvailabilitySkeleton,
-  PerformanceMetricsSkeleton
+  PerformanceMetricsSkeleton,
 } from "../components/global/skeletons";
 
 interface Order {
@@ -69,38 +69,44 @@ const WarehouseDashboard = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Product cache - load all products once on mount
-  const [productCache, setProductCache] = useState<Map<string, Product>>(new Map());
+  const [productCache, setProductCache] = useState<Map<string, Product>>(
+    new Map()
+  );
   const [productsLoaded, setProductsLoaded] = useState(false);
 
   // Load ALL products once when component mounts (cached for entire session)
   useEffect(() => {
     const loadAllProducts = async () => {
       try {
-        console.log('🔄 Loading product cache...');
-        const productsRef = collection(db, 'products');
+        console.log("🔄 Loading product cache...");
+        const productsRef = collection(db, "products");
         const snapshot = await getDocs(productsRef);
-        
+
         const cache = new Map<string, Product>();
-        snapshot.docs.forEach(doc => {
+        snapshot.docs.forEach((doc) => {
           const data = doc.data() as Product;
           cache.set(data.sku, data);
         });
-        
+
         setProductCache(cache);
         setProductsLoaded(true);
         console.log(`✅ Cached ${cache.size} products in memory`);
       } catch (error) {
-        console.error('❌ Failed to load product cache:', error);
+        console.error("❌ Failed to load product cache:", error);
         setProductsLoaded(true); // Continue even if cache fails
       }
     };
-    
+
     loadAllProducts();
   }, []); // Empty dependency - runs once on mount
 
   // Helper function to get midnight timestamp for a given date
   const getMidnightTimestamp = (date: Date): number => {
-    const midnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const midnight = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
     return midnight.getTime();
   };
 
@@ -127,22 +133,30 @@ const WarehouseDashboard = () => {
       }
 
       const unixMs = getMidnightTimestamp(date);
-      console.log(`Fetching orders for ${date.toDateString()}: ${new Date(unixMs).toLocaleString()}`);
+      console.log(
+        `Fetching orders for ${date.toDateString()}: ${new Date(
+          unixMs
+        ).toLocaleString()}`
+      );
 
       const orderRef = collection(db, "orders");
       const expectedLocationFormat = `ABB - ${user.location}`;
-      
+
       const q = query(
         orderRef,
         where("timeStamp", ">=", unixMs),
-        where("timeStamp", "<", unixMs + (24 * 60 * 60 * 1000)), // Next day
+        where("timeStamp", "<", unixMs + 24 * 60 * 60 * 1000), // Next day
         where("location", "==", expectedLocationFormat)
       );
 
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        console.log(`No orders found for location ${user.location} on ${date.toDateString()}.`);
+        console.log(
+          `No orders found for location ${
+            user.location
+          } on ${date.toDateString()}.`
+        );
         return [];
       }
 
@@ -154,9 +168,12 @@ const WarehouseDashboard = () => {
           } as Order)
       );
 
-      console.log(`Found ${fetchedOrders.length} orders for ABB - ${user.location} on ${date.toDateString()}`);
+      console.log(
+        `Found ${fetchedOrders.length} orders for ABB - ${
+          user.location
+        } on ${date.toDateString()}`
+      );
       return fetchedOrders;
-
     } catch (error) {
       console.error(`Error fetching orders for ${date.toDateString()}:`, error);
       throw error;
@@ -167,8 +184,10 @@ const WarehouseDashboard = () => {
   const fetchSaturday = async (mondayDate: Date) => {
     try {
       const saturdayDate = getPreviousSaturday(mondayDate);
-      console.log(`📅 Fetching Saturday orders for ${saturdayDate.toDateString()}`);
-      
+      console.log(
+        `📅 Fetching Saturday orders for ${saturdayDate.toDateString()}`
+      );
+
       const orders = await fetchOrders(saturdayDate);
       setSaturdayOrders(orders);
       return orders;
@@ -184,7 +203,7 @@ const WarehouseDashboard = () => {
     try {
       const sundayDate = getPreviousSunday(mondayDate);
       console.log(`📅 Fetching Sunday orders for ${sundayDate.toDateString()}`);
-      
+
       const orders = await fetchOrders(sundayDate);
       setSundayOrders(orders);
       return orders;
@@ -197,8 +216,11 @@ const WarehouseDashboard = () => {
 
   // Auto-enable Saturday and Sunday toggles when Monday is selected
   useEffect(() => {
-    if (selectedDate.getDay() === 1) { // Monday is day 1
-      console.log('📅 Monday detected - auto-enabling Saturday and Sunday toggles');
+    if (selectedDate.getDay() === 1) {
+      // Monday is day 1
+      console.log(
+        "📅 Monday detected - auto-enabling Saturday and Sunday toggles"
+      );
       setIsSaturdayActive(true);
       setIsSundayActive(true);
     }
@@ -220,15 +242,16 @@ const WarehouseDashboard = () => {
         setOrders(mainOrders);
 
         // If it's Monday and toggles are active, fetch weekend data
-        if (selectedDate.getDay() === 1) { // Monday
+        if (selectedDate.getDay() === 1) {
+          // Monday
           const promises = [];
-          
+
           if (isSaturdayActive) {
             promises.push(fetchSaturday(selectedDate));
           } else {
             setSaturdayOrders([]);
           }
-          
+
           if (isSundayActive) {
             promises.push(fetchSunday(selectedDate));
           } else {
@@ -244,10 +267,11 @@ const WarehouseDashboard = () => {
           setSaturdayOrders([]);
           setSundayOrders([]);
         }
-
       } catch (error) {
         console.error("Error fetching orders:", error);
-        setError(error instanceof Error ? error.message : "Failed to fetch orders");
+        setError(
+          error instanceof Error ? error.message : "Failed to fetch orders"
+        );
       } finally {
         setLoading(false);
       }
@@ -256,68 +280,77 @@ const WarehouseDashboard = () => {
     if (user?.location && productsLoaded) {
       fetchAllRelevantOrders();
     }
-  }, [user?.location, selectedDate, isSaturdayActive, isSundayActive, productsLoaded]);
+  }, [
+    user?.location,
+    selectedDate,
+    isSaturdayActive,
+    isSundayActive,
+    productsLoaded,
+  ]);
 
   // Handle date selector changes - memoized to prevent re-renders
-  const handleDateChange = useCallback((dateData: {
-    selectedDate: Date;
-    isSaturdayActive: boolean;
-    isSundayActive: boolean;
-  }) => {
-    console.log('📅 Date selector changed:', {
-      date: dateData.selectedDate.toDateString(),
-      saturday: dateData.isSaturdayActive,
-      sunday: dateData.isSundayActive
-    });
-    
-    setSelectedDate(dateData.selectedDate);
-    setIsSaturdayActive(dateData.isSaturdayActive);
-    setIsSundayActive(dateData.isSundayActive);
-  }, []); // Empty deps - callback never changes
+  const handleDateChange = useCallback(
+    (dateData: {
+      selectedDate: Date;
+      isSaturdayActive: boolean;
+      isSundayActive: boolean;
+    }) => {
+      console.log("📅 Date selector changed:", {
+        date: dateData.selectedDate.toDateString(),
+        saturday: dateData.isSaturdayActive,
+        sunday: dateData.isSundayActive,
+      });
+
+      setSelectedDate(dateData.selectedDate);
+      setIsSaturdayActive(dateData.isSaturdayActive);
+      setIsSundayActive(dateData.isSundayActive);
+    },
+    []
+  ); // Empty deps - callback never changes
 
   // Combine all orders for processing
   const allOrders = [...orders, ...saturdayOrders, ...sundayOrders];
-  
+
   const unshippedOrders = allOrders.filter((order) => order.shipped === false);
   const shippedOrders = allOrders.filter((order) => order.shipped === true);
 
   // Extract all items from unshipped orders with CACHED product enrichment
   const getAllOrderItems = (): EnrichedOrderItem[] => {
     const allItems: OrderItem[] = [];
-    
-    unshippedOrders.forEach(order => {
+
+    unshippedOrders.forEach((order) => {
       if (order.items && order.items.length > 0) {
         order.items.forEach((item: any) => {
           allItems.push({
-            name: item.name || 'Unknown Product',
-            sku: item.sku || 'Unknown SKU',
+            name: item.name || "Unknown Product",
+            sku: item.sku || "Unknown SKU",
             upc: item.upc,
             quantity: item.quantity || 1,
             orderNumber: order.orderNumber,
             orderId: order.id,
             priority: order.priority,
-            timeStamp: order.timeStamp
+            timeStamp: order.timeStamp,
           });
         });
       }
     });
-    
+
     // Enrich with CACHED product data (instant, no network calls!)
-    const enrichedItems: EnrichedOrderItem[] = allItems.map(item => ({
+    const enrichedItems: EnrichedOrderItem[] = allItems.map((item) => ({
       ...item,
-      product: productCache.get(item.sku) // Fast cache lookup!
+      product: productCache.get(item.sku), // Fast cache lookup!
     }));
-    
-    console.log('📦 Order items processed:', {
+
+    console.log("📦 Order items processed:", {
       totalItems: allItems.length,
-      withProductData: enrichedItems.filter(item => item.product).length,
+      withProductData: enrichedItems.filter((item) => item.product).length,
       cacheSize: productCache.size,
       mainOrders: orders.length,
       saturdayOrders: saturdayOrders.length,
       sundayOrders: sundayOrders.length,
-      sampleEnrichedItem: enrichedItems[0]
+      sampleEnrichedItem: enrichedItems[0],
     });
-    
+
     return enrichedItems;
   };
 
@@ -325,31 +358,50 @@ const WarehouseDashboard = () => {
   const enrichedOrderItems = getAllOrderItems();
 
   // Filter items by category using clean product data
-  const bubbleWrapItems = enrichedOrderItems.filter(item => 
-    item.product?.category === 'bubble_wrap'
-  );
-  
-  const instapakItems = enrichedOrderItems.filter(item => 
-    item.product?.category === 'instapak'
+  const bubbleWrapItems = enrichedOrderItems.filter(
+    (item) => item.product?.category === "bubble_wrap"
   );
 
-  const leicaItems = enrichedOrderItems.filter(item => 
-    item.product?.category === 'leica'
+  const instapakItems = enrichedOrderItems.filter(
+    (item) => item.product?.category === "instapak"
   );
 
-  const tapeItems = enrichedOrderItems.filter(item => 
-    item.product?.category === 'tape'
+  const leicaItems = enrichedOrderItems.filter(
+    (item) => item.product?.category === "leica"
   );
 
-  const otherItems = enrichedOrderItems.filter(item => 
-    !item.product || !['bubble_wrap', 'instapak', 'leica', 'tape'].includes(item.product.category)
+  const tapeItems = enrichedOrderItems.filter(
+    (item) => item.product?.category === "tape"
+  );
+
+  const otherItems = enrichedOrderItems.filter(
+    (item) =>
+      !item.product ||
+      !["bubble_wrap", "instapak", "leica", "tape"].includes(
+        item.product.category
+      )
   );
 
   // Calculate performance stats from actual order data
   const performanceStats = [
-    { label: "Processing", value: unshippedOrders.length.toString(), change: "+5%", positive: true },
-    { label: "Shipped Today", value: shippedOrders.length.toString(), change: "+12%", positive: true },
-    { label: "Total Orders", value: allOrders.length.toString(), change: "-3%", positive: true },
+    {
+      label: "Processing",
+      value: unshippedOrders.length.toString(),
+      change: "+5%",
+      positive: true,
+    },
+    {
+      label: "Shipped Today",
+      value: shippedOrders.length.toString(),
+      change: "+12%",
+      positive: true,
+    },
+    {
+      label: "Total Orders",
+      value: allOrders.length.toString(),
+      change: "-3%",
+      positive: true,
+    },
     { label: "Efficiency", value: "94%", change: "+2%", positive: true },
   ];
 
@@ -363,7 +415,8 @@ const WarehouseDashboard = () => {
         {/* Loading message */}
         <div className="mb-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
           <p className="text-blue-300 text-sm">
-            🔄 Loading product catalog... ({productCache.size > 0 ? productCache.size : 0}/~92 products)
+            🔄 Loading product catalog... (
+            {productCache.size > 0 ? productCache.size : 0}/~92 products)
           </p>
         </div>
 
@@ -374,11 +427,11 @@ const WarehouseDashboard = () => {
             <LabelsPrintedSkeleton />
           </div>
           <div className="flex flex-col gap-4 min-h-0">
-            <DateSelector 
+            <DateSelector
               selectedDate={selectedDate}
               isSaturdayActive={isSaturdayActive}
               isSundayActive={isSundayActive}
-              onDateChange={handleDateChange} 
+              onDateChange={handleDateChange}
             />
             <OrdersToShipSkeleton />
           </div>
@@ -414,43 +467,44 @@ const WarehouseDashboard = () => {
       )}
 
       {/* Debug Info - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === "development" && (
         <div className="mb-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs">
           <p className="text-blue-300">
-            📊 Debug: Main({orders.length}) + Sat({saturdayOrders.length}) + Sun({sundayOrders.length}) = {allOrders.length} total orders
+            📊 Debug: Main({orders.length}) + Sat({saturdayOrders.length}) +
+            Sun({sundayOrders.length}) = {allOrders.length} total orders
           </p>
         </div>
       )}
 
       {/* Three Column Layout - Using flexbox with proper overflow handling */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-        
         {/* Column 1: Order Status & Labels Printed */}
         <div className="flex flex-col gap-6 min-h-0">
           {loading ? (
             <OrderStatusSkeleton />
           ) : (
-            <OrderStatus 
+            <OrderStatus
               shippedCount={shippedOrders.length}
               pendingCount={unshippedOrders.length}
             />
           )}
-          
-          <LabelsPrinted 
+
+          <LabelsPrinted
             shippedOrders={shippedOrders}
             unshippedOrders={unshippedOrders}
+            productCache={productCache} // Add this line
           />
         </div>
 
         {/* Column 2: Date Selector & Orders to Ship */}
         <div className="flex flex-col gap-4 min-h-0">
-          <DateSelector 
+          <DateSelector
             selectedDate={selectedDate}
             isSaturdayActive={isSaturdayActive}
             isSundayActive={isSundayActive}
-            onDateChange={handleDateChange} 
+            onDateChange={handleDateChange}
           />
-          
+
           {loading ? (
             <OrdersToShipSkeleton />
           ) : (

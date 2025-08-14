@@ -63,6 +63,15 @@ const DateSelector: React.FC<DateSelectorProps> = ({
     }
   };
   
+  const goToToday = (): void => {
+    const todayDate = new Date();
+    onDateChange({
+      selectedDate: todayDate,
+      isSaturdayActive,
+      isSundayActive
+    });
+  };
+  
   const isFutureDate = (): boolean => {
     const nextDay = new Date(selectedDate);
     nextDay.setDate(nextDay.getDate() + 1);
@@ -71,6 +80,11 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   const isMonday = (date: Date): boolean => {
     return date.getDay() === 1;
+  };
+
+  const isToday = (date: Date): boolean => {
+    const todayDate = new Date();
+    return date.toDateString() === todayDate.toDateString();
   };
 
   const toggleSaturday = (): void => {
@@ -209,6 +223,19 @@ const DateSelector: React.FC<DateSelectorProps> = ({
             }`}>
               Sunday
             </span>
+          </button>
+        </div>
+      )}
+
+      {/* Today button - appears at the bottom when not on today's date */}
+      {!isToday(selectedDate) && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={goToToday}
+            className="px-4 py-1 mb-6 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 hover:border-cyan-400/50 rounded-lg text-sm font-medium text-cyan-300 hover:text-cyan-200 transition-all duration-200 hover:scale-105"
+            title="Go to today's date"
+          >
+            Jump to Today
           </button>
         </div>
       )}
